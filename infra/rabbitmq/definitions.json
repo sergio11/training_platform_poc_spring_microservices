@@ -1,0 +1,85 @@
+{
+  "exchanges": [
+    {
+      "name": "training.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false
+    }
+  ],
+  "queues": [
+    {
+      "name": "enrollment.created",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "enrollment.approved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "course.completed",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "certificate.generated",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.sent",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    }
+  ],
+  "bindings": [
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "enrollment.created",
+      "destination_type": "queue",
+      "routing_key": "enrollment.created",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "enrollment.approved",
+      "destination_type": "queue",
+      "routing_key": "enrollment.approved",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "course.completed",
+      "destination_type": "queue",
+      "routing_key": "course.completed",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "certificate.generated",
+      "destination_type": "queue",
+      "routing_key": "certificate.generated",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.sent",
+      "destination_type": "queue",
+      "routing_key": "notification.sent",
+      "arguments": {}
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "dashboard": null,
+  "panels": [
+    {
+      "id": 1,
+      "title": "JVM Memory Used",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "HTTP Requests Total",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "http_server_requests_seconds_count",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "HTTP Request Duration",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "http_server_requests_seconds_sum / http_server_requests_seconds_count",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "JVM Threads Live",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "jvm_threads_live_threads",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "10s"
+}
