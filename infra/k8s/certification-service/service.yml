@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: certification-service
+  namespace: training-platform
+  labels:
+    app: certification-service
+spec:
+  selector:
+    app: certification-service
+  ports:
+    - protocol: TCP
+      port: 8083
+      targetPort: 8083
+  type: ClusterIP
