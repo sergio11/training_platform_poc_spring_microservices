@@ -43,20 +43,31 @@ Microservices architecture for corporate training management based on Spring Boo
 ### 1. Start infrastructure
 
 ```bash
-cd infra
-docker-compose up -d
+rake infra:start
 ```
 
 ### 2. Build project
 
 ```bash
-./gradlew build
+rake build:all
 ```
 
 ### 3. Run services
 
 ```bash
-./gradlew :services:training-catalog-service:bootRun
+rake run:service[training-catalog-service]
+```
+
+### 4. Run tests
+
+```bash
+rake test:all
+```
+
+### 5. View all available commands
+
+```bash
+rake help
 ```
 
 ## Test Users
@@ -90,3 +101,8 @@ DELETE /api/v1/courses/{id}      - Deactivate course
 ## License
 
 MIT License
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Acceptance Criteria](docs/acceptance-criteria.md)
