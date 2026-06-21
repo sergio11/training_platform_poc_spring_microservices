@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -17,7 +18,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -101,8 +101,8 @@ class CertificationFlowIntegrationTest {
         certificateRepository.save(cert1);
         certificateRepository.save(cert2);
 
-        List<Certificate> certificates = certificateRepository.findByEmployeeId(1L);
-        assertEquals(2, certificates.size());
+        var certificates = certificateRepository.findByEmployeeId(1L, PageRequest.of(0, 10));
+        assertEquals(2, certificates.getContent().size());
     }
 
     @Test

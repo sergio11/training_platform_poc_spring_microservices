@@ -1,20 +1,24 @@
 package com.poc.training.notification.service;
 
+import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.shared.event.*;
+import com.poc.training.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,28 +39,28 @@ class NotificationServiceTest {
 
     @Test
     void shouldFindNotificationsByRecipientId() {
-        Notification n1 = Notification.builder().id(1L).recipientId("1").type(NotificationType.ENROLLMENT_CREATED).build();
-        Notification n2 = Notification.builder().id(2L).recipientId("1").type(NotificationType.COURSE_COMPLETED).build();
-        when(notificationRepository.findByRecipientId("1")).thenReturn(Arrays.asList(n1, n2));
+        Notification n1 = Notification.builder().id(1L).recipientId("1").type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
+        Notification n2 = Notification.builder().id(2L).recipientId("1").type(NotificationType.COURSE_COMPLETED).status(NotificationStatus.SENT).build();
+        when(notificationRepository.findByRecipientId(eq("1"), any(PageRequest.class))).thenReturn(new PageImpl<>(Arrays.asList(n1, n2)));
 
-        List<Notification> result = notificationService.findByRecipientId("1");
-        assertEquals(2, result.size());
+        var result = notificationService.findByRecipientId("1", PageRequest.of(0, 10));
+        assertEquals(2, result.getContent().size());
     }
 
     @Test
     void shouldFindNotificationById() {
-        Notification n = Notification.builder().id(1L).recipientId("1").message("Test").build();
-        when(notificationRepository.findById(1L)).thenReturn(java.util.Optional.of(n));
+        Notification n = Notification.builder().id(1L).recipientId("1").message("Test").type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(n));
 
-        Notification result = notificationService.findById(1L);
+        NotificationResponse result = notificationService.findById(1L);
         assertNotNull(result);
         assertEquals("Test", result.getMessage());
     }
 
     @Test
     void shouldThrowExceptionWhenNotificationNotFound() {
-        when(notificationRepository.findById(99L)).thenReturn(java.util.Optional.empty());
-        assertThrows(RuntimeException.class, () -> notificationService.findById(99L));
+        when(notificationRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> notificationService.findById(99L));
     }
 
     @Test

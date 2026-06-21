@@ -1,41 +1,59 @@
 package com.poc.training.notification.service;
 
+import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.shared.event.*;
+import com.poc.training.shared.event.RabbitMQConstants;
+import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final RabbitTemplate rabbitTemplate;
 
-    private static final String EXCHANGE = "training.exchange";
-
-    public List<Notification> findByRecipientId(String recipientId) {
-        return notificationRepository.findByRecipientId(recipientId);
+    public static NotificationResponse toResponse(Notification notification) {
+        return NotificationResponse.builder()
+                .id(notification.getId())
+                .type(notification.getType().name())
+                .recipientId(notification.getRecipientId())
+                .message(notification.getMessage())
+                .referenceId(notification.getReferenceId())
+                .referenceType(notification.getReferenceType())
+                .sentAt(notification.getSentAt())
+                .status(notification.getStatus().name())
+                .build();
     }
 
-    public Notification findById(Long id) {
-        return notificationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Notification not found with id: " + id));
+    @Transactional(readOnly = true)
+    public Page<NotificationResponse> findByRecipientId(String recipientId, Pageable pageable) {
+        return notificationRepository.findByRecipientId(recipientId, pageable).map(NotificationService::toResponse);
     }
 
+    @Transactional(readOnly = true)
+    public NotificationResponse findById(Long id) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + id));
+        return toResponse(notification);
+    }
+
+    @Transactional
     @RabbitListener(queues = "enrollment.created")
     public void handleEnrollmentCreated(EnrollmentCreatedEvent event) {
         log.info("Received EnrollmentCreatedEvent for enrollment: {}", event.getEnrollmentId());
@@ -53,6 +71,7 @@ public class NotificationService {
         );
     }
 
+    @Transactional
     @RabbitListener(queues = "enrollment.approved")
     public void handleEnrollmentApproved(EnrollmentApprovedEvent event) {
         log.info("Received EnrollmentApprovedEvent for enrollment: {}", event.getEnrollmentId());
@@ -70,6 +89,7 @@ public class NotificationService {
         );
     }
 
+    @Transactional
     @RabbitListener(queues = "certificate.generated")
     public void handleCertificateGenerated(CertificateGeneratedEvent event) {
         log.info("Received CertificateGeneratedEvent for certificate: {}", event.getCertificateId());
@@ -110,7 +130,7 @@ public class NotificationService {
                 .message(message)
                 .build();
 
-        rabbitTemplate.convertAndSend(EXCHANGE, "notification.sent", event);
+        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT, event);
         log.info("Published NotificationSentEvent for notification: {}", saved.getId());
     }
 }

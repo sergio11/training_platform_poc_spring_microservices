@@ -1,12 +1,12 @@
 package com.poc.training.enrollment.controller;
 
-import com.poc.training.enrollment.model.Enrollment;
-import com.poc.training.enrollment.model.EnrollmentStatus;
+import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.service.EnrollmentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,30 +34,30 @@ class EnrollmentControllerTest {
 
     @Test
     void shouldReturnEnrollmentsByEmployeeId() throws Exception {
-        Enrollment e = Enrollment.builder()
+        EnrollmentResponse response = EnrollmentResponse.builder()
                 .id(1L)
                 .employeeId(1L)
                 .courseId(1L)
-                .status(EnrollmentStatus.PENDING)
+                .status("PENDING")
                 .build();
 
-        when(enrollmentService.findByEmployeeId(1L)).thenReturn(Arrays.asList(e));
+        when(enrollmentService.findByEmployeeId(eq(1L), any())).thenReturn(new PageImpl<>(Arrays.asList(response)));
 
         mockMvc.perform(get("/api/v1/enrollments").param("employeeId", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].employeeId").value(1));
+                .andExpect(jsonPath("$.content[0].employeeId").value(1));
     }
 
     @Test
     void shouldReturnEnrollmentById() throws Exception {
-        Enrollment e = Enrollment.builder()
+        EnrollmentResponse response = EnrollmentResponse.builder()
                 .id(1L)
                 .employeeId(1L)
                 .courseId(1L)
-                .status(EnrollmentStatus.PENDING)
+                .status("PENDING")
                 .build();
 
-        when(enrollmentService.findById(1L)).thenReturn(e);
+        when(enrollmentService.findById(1L)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/enrollments/1"))
                 .andExpect(status().isOk())
@@ -66,14 +66,14 @@ class EnrollmentControllerTest {
 
     @Test
     void shouldCreateEnrollment() throws Exception {
-        Enrollment e = Enrollment.builder()
+        EnrollmentResponse response = EnrollmentResponse.builder()
                 .id(1L)
                 .employeeId(1L)
                 .courseId(1L)
-                .status(EnrollmentStatus.PENDING)
+                .status("PENDING")
                 .build();
 
-        when(enrollmentService.enroll(eq(1L), eq(1L))).thenReturn(e);
+        when(enrollmentService.enroll(eq(1L), eq(1L))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/enrollments").param("employeeId", "1").param("courseId", "1"))
                 .andExpect(status().isCreated())
@@ -82,14 +82,14 @@ class EnrollmentControllerTest {
 
     @Test
     void shouldApproveEnrollment() throws Exception {
-        Enrollment e = Enrollment.builder()
+        EnrollmentResponse response = EnrollmentResponse.builder()
                 .id(1L)
                 .employeeId(1L)
                 .courseId(1L)
-                .status(EnrollmentStatus.APPROVED)
+                .status("APPROVED")
                 .build();
 
-        when(enrollmentService.approve(1L)).thenReturn(e);
+        when(enrollmentService.approve(1L)).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/enrollments/1/approve"))
                 .andExpect(status().isOk())
@@ -98,14 +98,14 @@ class EnrollmentControllerTest {
 
     @Test
     void shouldCompleteEnrollment() throws Exception {
-        Enrollment e = Enrollment.builder()
+        EnrollmentResponse response = EnrollmentResponse.builder()
                 .id(1L)
                 .employeeId(1L)
                 .courseId(1L)
-                .status(EnrollmentStatus.COMPLETED)
+                .status("COMPLETED")
                 .build();
 
-        when(enrollmentService.complete(1L)).thenReturn(e);
+        when(enrollmentService.complete(1L)).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/enrollments/1/complete"))
                 .andExpect(status().isOk())

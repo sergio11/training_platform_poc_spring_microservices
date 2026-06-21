@@ -1,5 +1,6 @@
 package com.poc.training.enrollment.client;
 
+import com.poc.training.shared.dto.CourseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

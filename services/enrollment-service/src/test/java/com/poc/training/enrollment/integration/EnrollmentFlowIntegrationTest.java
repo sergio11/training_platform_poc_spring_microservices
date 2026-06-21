@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -96,8 +97,8 @@ class EnrollmentFlowIntegrationTest {
         enrollmentRepository.save(enrollment1);
         enrollmentRepository.save(enrollment2);
 
-        List<Enrollment> enrollments = enrollmentRepository.findByEmployeeId(1L);
-        assertEquals(2, enrollments.size());
+        var enrollments = enrollmentRepository.findByEmployeeId(1L, PageRequest.of(0, 10));
+        assertEquals(2, enrollments.getContent().size());
     }
 
     @Test

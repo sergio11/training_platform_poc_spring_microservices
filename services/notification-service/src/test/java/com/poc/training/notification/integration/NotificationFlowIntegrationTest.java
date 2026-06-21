@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -18,7 +19,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -94,8 +94,8 @@ class NotificationFlowIntegrationTest {
         notificationRepository.save(notif1);
         notificationRepository.save(notif2);
 
-        List<Notification> notifications = notificationRepository.findByRecipientId("1");
-        assertEquals(2, notifications.size());
+        var notifications = notificationRepository.findByRecipientId("1", PageRequest.of(0, 10));
+        assertEquals(2, notifications.getContent().size());
     }
 
     @Test
@@ -119,10 +119,10 @@ class NotificationFlowIntegrationTest {
         notificationRepository.save(notif1);
         notificationRepository.save(notif2);
 
-        List<Notification> enrollNotifs = notificationRepository.findByType(NotificationType.ENROLLMENT_CREATED);
+        var enrollNotifs = notificationRepository.findByType(NotificationType.ENROLLMENT_CREATED);
         assertEquals(1, enrollNotifs.size());
 
-        List<Notification> certNotifs = notificationRepository.findByType(NotificationType.CERTIFICATE_GENERATED);
+        var certNotifs = notificationRepository.findByType(NotificationType.CERTIFICATE_GENERATED);
         assertEquals(1, certNotifs.size());
     }
 
@@ -202,7 +202,7 @@ class NotificationFlowIntegrationTest {
 
         Notification saved = notificationRepository.save(notification);
 
-        List<Notification> notifications = notificationRepository.findByReferenceIdAndReferenceType("1", "CERTIFICATE");
+        var notifications = notificationRepository.findByReferenceIdAndReferenceType("1", "CERTIFICATE");
         assertEquals(1, notifications.size());
         assertEquals(NotificationType.CERTIFICATE_GENERATED, notifications.get(0).getType());
     }

@@ -1,12 +1,13 @@
 package com.poc.training.certification.controller;
 
-import com.poc.training.certification.model.Certificate;
+import com.poc.training.certification.dto.CertificateResponse;
 import com.poc.training.certification.service.CertificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/certificates")
@@ -16,17 +17,21 @@ public class CertificateController {
     private final CertificationService certificationService;
 
     @GetMapping
-    public ResponseEntity<List<Certificate>> getCertificatesByEmployeeId(@RequestParam Long employeeId) {
-        return ResponseEntity.ok(certificationService.findByEmployeeId(employeeId));
+    public ResponseEntity<Page<CertificateResponse>> getCertificatesByEmployeeId(
+            @RequestParam Long employeeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy) {
+        return ResponseEntity.ok(certificationService.findByEmployeeId(employeeId, PageRequest.of(page, size, Sort.by(sortBy))));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Certificate> getCertificateById(@PathVariable Long id) {
+    public ResponseEntity<CertificateResponse> getCertificateById(@PathVariable Long id) {
         return ResponseEntity.ok(certificationService.findById(id));
     }
 
     @GetMapping("/number/{number}")
-    public ResponseEntity<Certificate> getCertificateByNumber(@PathVariable String number) {
+    public ResponseEntity<CertificateResponse> getCertificateByNumber(@PathVariable String number) {
         return ResponseEntity.ok(certificationService.findByCertificateNumber(number));
     }
 }

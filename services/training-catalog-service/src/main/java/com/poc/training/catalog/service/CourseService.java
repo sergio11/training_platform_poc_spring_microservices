@@ -1,57 +1,92 @@
 package com.poc.training.catalog.service;
 
+import com.poc.training.catalog.dto.CourseRequest;
+import com.poc.training.catalog.dto.CourseResponse;
 import com.poc.training.catalog.model.Course;
 import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.repository.CourseRepository;
+import com.poc.training.shared.exception.BusinessException;
+import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class CourseService {
 
     private final CourseRepository courseRepository;
 
-    public List<Course> findAll() {
-        return courseRepository.findAll();
+    public static CourseResponse toResponse(Course course) {
+        return CourseResponse.builder()
+                .id(course.getId())
+                .title(course.getTitle())
+                .description(course.getDescription())
+                .instructor(course.getInstructor())
+                .capacity(course.getCapacity())
+                .enrolledCount(course.getEnrolledCount())
+                .status(course.getStatus().name())
+                .build();
     }
 
-    public List<Course> findActiveCourses() {
-        return courseRepository.findByStatus(CourseStatus.ACTIVE);
+    private static Course toEntity(CourseRequest request) {
+        return Course.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .instructor(request.getInstructor())
+                .capacity(request.getCapacity())
+                .build();
     }
 
-    public Course findById(Long id) {
-        return courseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
+    @Transactional(readOnly = true)
+    public Page<CourseResponse> findAll(Pageable pageable) {
+        return courseRepository.findAll(pageable).map(CourseService::toResponse);
     }
 
-    public Course create(Course course) {
-        return courseRepository.save(course);
+    @Transactional(readOnly = true)
+    public Page<CourseResponse> findActiveCourses(Pageable pageable) {
+        return courseRepository.findByStatus(CourseStatus.ACTIVE, pageable).map(CourseService::toResponse);
     }
 
-    public Course update(Long id, Course courseDetails) {
-        Course course = findById(id);
-        course.setTitle(courseDetails.getTitle());
-        course.setDescription(courseDetails.getDescription());
-        course.setInstructor(courseDetails.getInstructor());
-        course.setCapacity(courseDetails.getCapacity());
-        return courseRepository.save(course);
+    @Transactional(readOnly = true)
+    public CourseResponse findById(Long id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));
+        return toResponse(course);
     }
 
+    @Transactional
+    public CourseResponse create(CourseRequest request) {
+        Course course = toEntity(request);
+        return toResponse(courseRepository.save(course));
+    }
+
+    @Transactional
+    public CourseResponse update(Long id, CourseRequest request) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));
+        course.setTitle(request.getTitle());
+        course.setDescription(request.getDescription());
+        course.setInstructor(request.getInstructor());
+        course.setCapacity(request.getCapacity());
+        return toResponse(courseRepository.save(course));
+    }
+
+    @Transactional
     public void deactivate(Long id) {
-        Course course = findById(id);
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));
         course.setStatus(CourseStatus.INACTIVE);
         courseRepository.save(course);
     }
 
+    @Transactional
     public void incrementEnrolledCount(Long courseId) {
         int updated = courseRepository.incrementEnrolledCountIfAvailable(courseId);
         if (updated == 0) {
-            throw new RuntimeException("No available seats for course: " + courseId);
+            throw new BusinessException("No available seats for course: " + courseId);
         }
     }
 }

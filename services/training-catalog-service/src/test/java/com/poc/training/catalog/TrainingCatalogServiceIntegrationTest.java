@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -83,8 +84,8 @@ class TrainingCatalogServiceIntegrationTest {
         courseRepository.save(active);
         courseRepository.save(inactive);
 
-        var activeCourses = courseRepository.findByStatus(CourseStatus.ACTIVE);
-        assertEquals(1, activeCourses.size());
-        assertEquals("Active Course", activeCourses.get(0).getTitle());
+        var activeCourses = courseRepository.findByStatus(CourseStatus.ACTIVE, PageRequest.of(0, 10));
+        assertEquals(1, activeCourses.getContent().size());
+        assertEquals("Active Course", activeCourses.getContent().get(0).getTitle());
     }
 }

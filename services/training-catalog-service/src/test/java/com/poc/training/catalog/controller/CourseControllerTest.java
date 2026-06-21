@@ -1,12 +1,14 @@
 package com.poc.training.catalog.controller;
 
-import com.poc.training.catalog.model.Course;
+import com.poc.training.catalog.dto.CourseRequest;
+import com.poc.training.catalog.dto.CourseResponse;
 import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.service.CourseService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.http.MediaType;
@@ -34,34 +36,34 @@ class CourseControllerTest {
 
     @Test
     void shouldReturnAllCourses() throws Exception {
-        Course course = Course.builder()
+        CourseResponse courseResponse = CourseResponse.builder()
                 .id(1L)
                 .title("Java Basics")
                 .instructor("John")
                 .capacity(30)
                 .enrolledCount(0)
-                .status(CourseStatus.ACTIVE)
+                .status(CourseStatus.ACTIVE.name())
                 .build();
 
-        when(courseService.findAll()).thenReturn(Arrays.asList(course));
+        when(courseService.findAll(any())).thenReturn(new PageImpl<>(Arrays.asList(courseResponse)));
 
         mockMvc.perform(get("/api/v1/courses"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("Java Basics"));
+                .andExpect(jsonPath("$.content[0].title").value("Java Basics"));
     }
 
     @Test
     void shouldReturnCourseById() throws Exception {
-        Course course = Course.builder()
+        CourseResponse courseResponse = CourseResponse.builder()
                 .id(1L)
                 .title("Java Basics")
                 .instructor("John")
                 .capacity(30)
                 .enrolledCount(0)
-                .status(CourseStatus.ACTIVE)
+                .status(CourseStatus.ACTIVE.name())
                 .build();
 
-        when(courseService.findById(1L)).thenReturn(course);
+        when(courseService.findById(1L)).thenReturn(courseResponse);
 
         mockMvc.perform(get("/api/v1/courses/1"))
                 .andExpect(status().isOk())
@@ -70,13 +72,14 @@ class CourseControllerTest {
 
     @Test
     void shouldCreateCourse() throws Exception {
-        Course course = Course.builder()
+        CourseResponse courseResponse = CourseResponse.builder()
+                .id(1L)
                 .title("Java Basics")
                 .instructor("John")
                 .capacity(30)
                 .build();
 
-        when(courseService.create(any(Course.class))).thenReturn(course);
+        when(courseService.create(any(CourseRequest.class))).thenReturn(courseResponse);
 
         mockMvc.perform(post("/api/v1/courses")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -87,14 +90,14 @@ class CourseControllerTest {
 
     @Test
     void shouldUpdateCourse() throws Exception {
-        Course course = Course.builder()
+        CourseResponse courseResponse = CourseResponse.builder()
                 .id(1L)
                 .title("Java Advanced")
                 .instructor("John Updated")
                 .capacity(40)
                 .build();
 
-        when(courseService.update(any(Long.class), any(Course.class))).thenReturn(course);
+        when(courseService.update(any(Long.class), any(CourseRequest.class))).thenReturn(courseResponse);
 
         mockMvc.perform(put("/api/v1/courses/1")
                 .contentType(MediaType.APPLICATION_JSON)
