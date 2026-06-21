@@ -23,6 +23,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: notification-service-config
+            - secretRef:
+                name: training-notification-secret
           resources:
             requests:
               memory: "256Mi"

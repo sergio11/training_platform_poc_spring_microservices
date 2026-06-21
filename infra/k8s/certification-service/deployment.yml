@@ -23,6 +23,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: certification-service-config
+            - secretRef:
+                name: training-certification-secret
           resources:
             requests:
               memory: "256Mi"

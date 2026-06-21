@@ -37,7 +37,7 @@ class TrainingCatalogClientTest {
     void setUp() {
         when(webClientBuilder.baseUrl(anyString())).thenReturn(chainedBuilder);
         when(chainedBuilder.build()).thenReturn(webClient);
-        trainingCatalogClient = new TrainingCatalogClient(webClientBuilder);
+        trainingCatalogClient = new TrainingCatalogClient(webClientBuilder, "http://localhost:8081");
     }
 
     @Test

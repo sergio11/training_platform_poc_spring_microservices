@@ -23,6 +23,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: training-catalog-config
+            - secretRef:
+                name: training-catalog-secret
           resources:
             requests:
               memory: "256Mi"
