@@ -83,8 +83,17 @@ public class EnrollmentService {
         log.info("Approving enrollment: {}", enrollmentId);
 
         Enrollment enrollment = findById(enrollmentId);
+
+        if (enrollment.getStatus() != EnrollmentStatus.PENDING) {
+            throw new RuntimeException(
+                "Cannot approve enrollment in status: " + enrollment.getStatus() + ". Expected: PENDING"
+            );
+        }
+
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         Enrollment saved = enrollmentRepository.save(enrollment);
+
+        trainingCatalogClient.incrementEnrolledCount(saved.getCourseId());
 
         EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
@@ -105,6 +114,13 @@ public class EnrollmentService {
         log.info("Completing enrollment: {}", enrollmentId);
 
         Enrollment enrollment = findById(enrollmentId);
+
+        if (enrollment.getStatus() != EnrollmentStatus.APPROVED) {
+            throw new RuntimeException(
+                "Cannot complete enrollment in status: " + enrollment.getStatus() + ". Expected: APPROVED"
+            );
+        }
+
         enrollment.setStatus(EnrollmentStatus.COMPLETED);
         enrollment.setCompletedAt(LocalDateTime.now());
         Enrollment saved = enrollmentRepository.save(enrollment);

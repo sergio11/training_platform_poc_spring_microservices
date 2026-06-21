@@ -41,4 +41,10 @@ public class CourseController {
         courseService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/enroll")
+    public ResponseEntity<Void> incrementEnrolledCount(@PathVariable Long id) {
+        courseService.incrementEnrolledCount(id);
+        return ResponseEntity.ok().build();
+    }
 }

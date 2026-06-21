@@ -31,14 +31,24 @@ public class TrainingCatalogClient {
                 .block();
     }
 
+    @CircuitBreaker(name = "catalogService", fallbackMethod = "incrementEnrolledCountFallback")
+    @Retry(name = "catalogService")
+    public void incrementEnrolledCount(Long courseId) {
+        log.info("Incrementing enrolled count for course: {}", courseId);
+        webClient.post()
+                .uri("/api/v1/courses/{id}/enroll", courseId)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+    }
+
     public CourseDTO getCourseFallback(Long courseId, Throwable throwable) {
         log.error("Fallback called for getCourse with id: {}. Error: {}", courseId, throwable.getMessage());
-        return CourseDTO.builder()
-                .id(courseId)
-                .title("Unknown Course")
-                .capacity(0)
-                .enrolledCount(0)
-                .status("UNKNOWN")
-                .build();
+        throw new RuntimeException("Catalog service unavailable. Cannot validate course: " + courseId);
+    }
+
+    public void incrementEnrolledCountFallback(Long courseId, Throwable throwable) {
+        log.error("Fallback called for incrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
+        throw new RuntimeException("Catalog service unavailable. Cannot increment enrollment count: " + courseId);
     }
 }

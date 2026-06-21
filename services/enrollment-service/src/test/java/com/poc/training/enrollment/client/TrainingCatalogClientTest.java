@@ -41,33 +41,26 @@ class TrainingCatalogClientTest {
     }
 
     @Test
-    void shouldReturnFallbackCourseWhenExceptionOccurs() {
-        CourseDTO fallback = trainingCatalogClient.getCourseFallback(1L, new RuntimeException("Connection refused"));
-
-        assertNotNull(fallback);
-        assertEquals(1L, fallback.getId());
-        assertEquals("Unknown Course", fallback.getTitle());
-        assertEquals(0, fallback.getCapacity());
-        assertEquals(0, fallback.getEnrolledCount());
-        assertEquals("UNKNOWN", fallback.getStatus());
+    void shouldThrowExceptionInGetCourseFallback() {
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> trainingCatalogClient.getCourseFallback(1L, new RuntimeException("Connection refused")));
+        assertTrue(exception.getMessage().contains("Catalog service unavailable"));
+        assertTrue(exception.getMessage().contains("1"));
     }
 
     @Test
-    void shouldReturnFallbackWithNullId() {
-        CourseDTO fallback = trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error"));
-
-        assertNotNull(fallback);
-        assertNull(fallback.getId());
-        assertEquals("Unknown Course", fallback.getTitle());
+    void shouldThrowExceptionInIncrementEnrolledCountFallback() {
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> trainingCatalogClient.incrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
+        assertTrue(exception.getMessage().contains("Catalog service unavailable"));
+        assertTrue(exception.getMessage().contains("1"));
     }
 
     @Test
-    void shouldReturnFallbackWithDifferentIds() {
-        CourseDTO fallback1 = trainingCatalogClient.getCourseFallback(100L, new RuntimeException("Error"));
-        CourseDTO fallback2 = trainingCatalogClient.getCourseFallback(200L, new RuntimeException("Error"));
-
-        assertEquals(100L, fallback1.getId());
-        assertEquals(200L, fallback2.getId());
+    void shouldThrowExceptionInGetCourseFallbackWithNullId() {
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error")));
+        assertTrue(exception.getMessage().contains("Catalog service unavailable"));
     }
 
     @Test

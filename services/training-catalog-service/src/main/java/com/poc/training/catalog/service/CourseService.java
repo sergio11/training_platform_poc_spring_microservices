@@ -49,11 +49,9 @@ public class CourseService {
     }
 
     public void incrementEnrolledCount(Long courseId) {
-        Course course = findById(courseId);
-        if (course.getEnrolledCount() >= course.getCapacity()) {
+        int updated = courseRepository.incrementEnrolledCountIfAvailable(courseId);
+        if (updated == 0) {
             throw new RuntimeException("No available seats for course: " + courseId);
         }
-        course.setEnrolledCount(course.getEnrolledCount() + 1);
-        courseRepository.save(course);
     }
 }

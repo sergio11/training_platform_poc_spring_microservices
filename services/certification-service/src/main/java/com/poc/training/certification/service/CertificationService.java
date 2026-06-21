@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,26 +53,38 @@ public class CertificationService {
     }
 
     private void generateCertificate(CourseCompletedEvent event) {
-        Certificate certificate = Certificate.builder()
-                .enrollmentId(event.getEnrollmentId())
-                .employeeId(event.getEmployeeId())
-                .courseId(event.getCourseId())
-                .build();
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                Certificate certificate = Certificate.builder()
+                        .enrollmentId(event.getEnrollmentId())
+                        .employeeId(event.getEmployeeId())
+                        .courseId(event.getCourseId())
+                        .build();
 
-        Certificate saved = certificateRepository.save(certificate);
+                Certificate saved = certificateRepository.save(certificate);
 
-        CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("certification-service")
-                .certificateId(saved.getId())
-                .enrollmentId(saved.getEnrollmentId())
-                .employeeId(saved.getEmployeeId())
-                .courseId(saved.getCourseId())
-                .certificateNumber(saved.getCertificateNumber())
-                .build();
+                CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
+                        .eventId(UUID.randomUUID().toString())
+                        .timestamp(LocalDateTime.now())
+                        .source("certification-service")
+                        .certificateId(saved.getId())
+                        .enrollmentId(saved.getEnrollmentId())
+                        .employeeId(saved.getEmployeeId())
+                        .courseId(saved.getCourseId())
+                        .certificateNumber(saved.getCertificateNumber())
+                        .build();
 
-        rabbitTemplate.convertAndSend(EXCHANGE, "certificate.generated", certificateEvent);
-        log.info("Published CertificateGeneratedEvent for certificate: {}", saved.getId());
+                rabbitTemplate.convertAndSend(EXCHANGE, "certificate.generated", certificateEvent);
+                log.info("Published CertificateGeneratedEvent for certificate: {}", saved.getId());
+                return;
+            } catch (DataIntegrityViolationException e) {
+                log.warn("Certificate number collision on attempt {}/{} for enrollment: {}",
+                        i + 1, maxRetries, event.getEnrollmentId());
+                if (i == maxRetries - 1) {
+                    throw new RuntimeException("Failed to generate unique certificate number after " + maxRetries + " attempts");
+                }
+            }
+        }
     }
 }

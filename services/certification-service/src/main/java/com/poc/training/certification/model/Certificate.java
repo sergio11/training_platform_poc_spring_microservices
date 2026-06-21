@@ -3,6 +3,7 @@ package com.poc.training.certification.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "certificates")
@@ -40,6 +41,6 @@ public class Certificate {
     }
 
     private String generateCertificateNumber() {
-        return "CERT-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 10000);
+        return "CERT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

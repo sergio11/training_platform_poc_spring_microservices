@@ -90,17 +90,14 @@ class CourseServiceTest {
 
     @Test
     void shouldIncrementEnrolledCount() {
-        Course course = Course.builder().id(1L).title("Java Basics").capacity(30).enrolledCount(0).status(CourseStatus.ACTIVE).build();
-        when(courseRepository.findById(1L)).thenReturn(java.util.Optional.of(course));
-        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(courseRepository.incrementEnrolledCountIfAvailable(1L)).thenReturn(1);
         courseService.incrementEnrolledCount(1L);
-        verify(courseRepository, times(1)).save(any(Course.class));
+        verify(courseRepository, times(1)).incrementEnrolledCountIfAvailable(1L);
     }
 
     @Test
     void shouldThrowExceptionWhenNoSeatsAvailable() {
-        Course course = Course.builder().id(1L).title("Java Basics").capacity(30).enrolledCount(30).status(CourseStatus.ACTIVE).build();
-        when(courseRepository.findById(1L)).thenReturn(java.util.Optional.of(course));
+        when(courseRepository.incrementEnrolledCountIfAvailable(1L)).thenReturn(0);
         assertThrows(RuntimeException.class, () -> courseService.incrementEnrolledCount(1L));
     }
 }

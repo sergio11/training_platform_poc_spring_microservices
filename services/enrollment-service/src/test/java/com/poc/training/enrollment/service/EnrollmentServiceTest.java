@@ -108,7 +108,25 @@ class EnrollmentServiceTest {
 
         Enrollment result = enrollmentService.approve(1L);
         assertEquals(EnrollmentStatus.APPROVED, result.getStatus());
+        verify(trainingCatalogClient).incrementEnrolledCount(1L);
         verify(rabbitTemplate).convertAndSend(anyString(), eq("enrollment.approved"), any(EnrollmentApprovedEvent.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenApprovingNonPendingEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.APPROVED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.approve(1L));
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenApprovingCompletedEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.COMPLETED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.approve(1L));
     }
 
     @Test
@@ -121,5 +139,22 @@ class EnrollmentServiceTest {
         assertEquals(EnrollmentStatus.COMPLETED, result.getStatus());
         assertNotNull(result.getCompletedAt());
         verify(rabbitTemplate).convertAndSend(anyString(), eq("course.completed"), any(CourseCompletedEvent.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCompletingNonApprovedEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.complete(1L));
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCompletingAlreadyCompletedEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.COMPLETED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.complete(1L));
     }
 }

@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -117,5 +118,51 @@ class CertificationServiceTest {
 
         verify(certificateRepository, never()).save(any(Certificate.class));
         verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
+    }
+
+    @Test
+    void shouldRetryOnCertificateNumberCollision() {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
+        when(certificateRepository.save(any(Certificate.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate certificate number"))
+                .thenAnswer(inv -> {
+                    Certificate c = inv.getArgument(0);
+                    c.setId(1L);
+                    c.setCertificateNumber("CERT-RETRY-12345");
+                    return c;
+                });
+
+        certificationService.handleCourseCompleted(event);
+
+        verify(certificateRepository, times(2)).save(any(Certificate.class));
+        verify(rabbitTemplate).convertAndSend(anyString(), eq("certificate.generated"), any(CertificateGeneratedEvent.class));
+    }
+
+    @Test
+    void shouldThrowAfterMaxRetriesOnCollision() {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
+        when(certificateRepository.save(any(Certificate.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate certificate number"));
+
+        assertThrows(RuntimeException.class, () -> certificationService.handleCourseCompleted(event));
+        verify(certificateRepository, times(3)).save(any(Certificate.class));
     }
 }
