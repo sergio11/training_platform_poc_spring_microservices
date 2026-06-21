@@ -62,3 +62,7 @@ resilience4j:
       catalogService:
         maxAttempts: 3
         waitDuration: 500
+
+client:
+  catalog:
+    url: ${CATALOG_SERVICE_URL:http://localhost:8081}
