@@ -32,3 +32,12 @@ management:
     export:
       prometheus:
         enabled: true
+  otlp:
+    tracing:
+      endpoint: http://otel-collector:4317
+    metrics:
+      export:
+        endpoint: http://otel-collector:4317
+  tracing:
+    sampling:
+      probability: 1.0

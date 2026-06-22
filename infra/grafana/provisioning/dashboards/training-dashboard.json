@@ -1,5 +1,10 @@
 {
-  "dashboard": null,
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
   "panels": [
     {
       "id": 1,
@@ -50,9 +55,11 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
     }
   ],
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
-  "refresh": "10s"
+  "schemaVersion": 39,
+  "tags": ["training"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Training Platform Dashboard",
+  "uid": "training-main",
+  "version": 1
 }
