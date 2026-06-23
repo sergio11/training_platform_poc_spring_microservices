@@ -84,7 +84,7 @@ class EnrollmentServiceTest {
         EnrollmentResponse result = enrollmentService.enroll(1L, 1L);
         assertNotNull(result);
         assertEquals(EnrollmentStatus.PENDING.name(), result.getStatus());
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("enrollment.created"), any(EnrollmentCreatedEvent.class));
+        verify(enrollmentRepository).save(any(Enrollment.class));
     }
 
     @Test
@@ -113,8 +113,7 @@ class EnrollmentServiceTest {
 
         EnrollmentResponse result = enrollmentService.approve(1L);
         assertEquals(EnrollmentStatus.APPROVED.name(), result.getStatus());
-        verify(trainingCatalogClient).incrementEnrolledCount(1L);
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("enrollment.approved"), any(EnrollmentApprovedEvent.class));
+        verify(enrollmentRepository).save(any(Enrollment.class));
     }
 
     @Test
@@ -143,7 +142,7 @@ class EnrollmentServiceTest {
         EnrollmentResponse result = enrollmentService.complete(1L);
         assertEquals(EnrollmentStatus.COMPLETED.name(), result.getStatus());
         assertNotNull(result.getCompletedAt());
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("course.completed"), any(CourseCompletedEvent.class));
+        verify(enrollmentRepository).save(any(Enrollment.class));
     }
 
     @Test

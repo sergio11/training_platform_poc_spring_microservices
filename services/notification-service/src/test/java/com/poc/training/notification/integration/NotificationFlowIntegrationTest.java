@@ -88,11 +88,11 @@ class NotificationFlowIntegrationTest {
                 .build();
 
         Notification notif2 = Notification.builder()
-                .type(NotificationType.COURSE_COMPLETED)
+                .type(NotificationType.CERTIFICATE_GENERATED)
                 .recipientId("1")
-                .message("Course completed")
+                .message("Certificate generated")
                 .referenceId("1")
-                .referenceType("ENROLLMENT")
+                .referenceType("CERTIFICATE")
                 .build();
 
         notificationRepository.save(notif1);

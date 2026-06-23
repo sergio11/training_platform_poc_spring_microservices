@@ -20,7 +20,7 @@ public class Certificate {
     @Column(nullable = false, unique = true)
     private String certificateNumber;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Long enrollmentId;
 
     @Column(nullable = false)

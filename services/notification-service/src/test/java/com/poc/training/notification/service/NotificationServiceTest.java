@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
@@ -31,16 +30,13 @@ class NotificationServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
-    @Mock
-    private RabbitTemplate rabbitTemplate;
-
     @InjectMocks
     private NotificationService notificationService;
 
     @Test
     void shouldFindNotificationsByRecipientId() {
         Notification n1 = Notification.builder().id(1L).recipientId("1").type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
-        Notification n2 = Notification.builder().id(2L).recipientId("1").type(NotificationType.COURSE_COMPLETED).status(NotificationStatus.SENT).build();
+        Notification n2 = Notification.builder().id(2L).recipientId("1").type(NotificationType.CERTIFICATE_GENERATED).status(NotificationStatus.SENT).build();
         when(notificationRepository.findByRecipientId(eq("1"), any(PageRequest.class))).thenReturn(new PageImpl<>(Arrays.asList(n1, n2)));
 
         var result = notificationService.findByRecipientId("1", PageRequest.of(0, 10));
@@ -82,8 +78,10 @@ class NotificationServiceTest {
 
         notificationService.handleEnrollmentCreated(event);
 
-        verify(notificationRepository).save(any(Notification.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("notification.sent"), any(NotificationSentEvent.class));
+        verify(notificationRepository).save(argThat(n ->
+                n.getType() == NotificationType.ENROLLMENT_CREATED &&
+                n.getRecipientId().equals("1")
+        ));
     }
 
     @Test
@@ -105,8 +103,10 @@ class NotificationServiceTest {
 
         notificationService.handleEnrollmentApproved(event);
 
-        verify(notificationRepository).save(any(Notification.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("notification.sent"), any(NotificationSentEvent.class));
+        verify(notificationRepository).save(argThat(n ->
+                n.getType() == NotificationType.ENROLLMENT_APPROVED &&
+                n.getRecipientId().equals("1")
+        ));
     }
 
     @Test
@@ -130,33 +130,9 @@ class NotificationServiceTest {
 
         notificationService.handleCertificateGenerated(event);
 
-        verify(notificationRepository).save(any(Notification.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("notification.sent"), any(NotificationSentEvent.class));
-    }
-
-    @Test
-    void shouldHandleCourseCompletedEvent() {
-        CourseCompletedEvent event = CourseCompletedEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("enrollment-service")
-                .enrollmentId(1L)
-                .employeeId(1L)
-                .courseId(1L)
-                .build();
-
-        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
-            Notification n = inv.getArgument(0);
-            n.setId(1L);
-            return n;
-        });
-
-        notificationService.handleCourseCompleted(event);
-
         verify(notificationRepository).save(argThat(n ->
-                n.getType() == NotificationType.COURSE_COMPLETED &&
+                n.getType() == NotificationType.CERTIFICATE_GENERATED &&
                 n.getRecipientId().equals("1")
         ));
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("notification.sent"), any(NotificationSentEvent.class));
     }
 }

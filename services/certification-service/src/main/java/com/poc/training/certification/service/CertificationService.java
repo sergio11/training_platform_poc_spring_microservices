@@ -17,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -64,14 +66,51 @@ public class CertificationService {
     public void handleCourseCompleted(CourseCompletedEvent event) {
         log.info("Received CourseCompletedEvent for enrollment: {}", event.getEnrollmentId());
 
-        certificateRepository.findByEnrollmentId(event.getEnrollmentId())
-                .ifPresentOrElse(
-                        cert -> log.info("Certificate already exists for enrollment: {}", event.getEnrollmentId()),
-                        () -> generateCertificate(event)
-                );
+        if (certificateRepository.findByEnrollmentId(event.getEnrollmentId()).isPresent()) {
+            log.info("Certificate already exists for enrollment: {}", event.getEnrollmentId());
+            return;
+        }
+
+        Certificate saved = generateCertificate(event);
+
+        CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("certification-service")
+                .certificateId(saved.getId())
+                .enrollmentId(saved.getEnrollmentId())
+                .employeeId(saved.getEmployeeId())
+                .courseId(saved.getCourseId())
+                .certificateNumber(saved.getCertificateNumber())
+                .build();
+
+        sendAfterCommit(() -> {
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConstants.EXCHANGE,
+                    RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED,
+                    certificateEvent);
+            log.info("Published CertificateGeneratedEvent for certificate: {}", saved.getId());
+        });
     }
 
-    private void generateCertificate(CourseCompletedEvent event) {
+    private void sendAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        action.run();
+                    } catch (Exception e) {
+                        log.error("Failed to execute after commit action: {}", e.getMessage());
+                    }
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
+
+    private Certificate generateCertificate(CourseCompletedEvent event) {
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {
@@ -81,22 +120,7 @@ public class CertificationService {
                         .courseId(event.getCourseId())
                         .build();
 
-                Certificate saved = certificateRepository.save(certificate);
-
-                CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
-                        .eventId(UUID.randomUUID().toString())
-                        .timestamp(LocalDateTime.now())
-                        .source("certification-service")
-                        .certificateId(saved.getId())
-                        .enrollmentId(saved.getEnrollmentId())
-                        .employeeId(saved.getEmployeeId())
-                        .courseId(saved.getCourseId())
-                        .certificateNumber(saved.getCertificateNumber())
-                        .build();
-
-                rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED, certificateEvent);
-                log.info("Published CertificateGeneratedEvent for certificate: {}", saved.getId());
-                return;
+                return certificateRepository.save(certificate);
             } catch (DataIntegrityViolationException e) {
                 log.warn("Certificate number collision on attempt {}/{} for enrollment: {}",
                         i + 1, maxRetries, event.getEnrollmentId());
@@ -105,5 +129,6 @@ public class CertificationService {
                 }
             }
         }
+        throw new BusinessException("Failed to generate certificate for enrollment: " + event.getEnrollmentId());
     }
 }

@@ -11,14 +11,10 @@ import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -26,7 +22,6 @@ import java.util.UUID;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final RabbitTemplate rabbitTemplate;
 
     public static NotificationResponse toResponse(Notification notification) {
         return NotificationResponse.builder()
@@ -62,7 +57,7 @@ public class NotificationService {
                 "You have been enrolled in course %d. Your enrollment ID is %d.",
                 event.getCourseId(), event.getEnrollmentId());
 
-        saveAndPublishNotification(
+        saveNotification(
                 NotificationType.ENROLLMENT_CREATED,
                 String.valueOf(event.getEmployeeId()),
                 message,
@@ -80,7 +75,7 @@ public class NotificationService {
                 "Your enrollment %d for course %d has been approved.",
                 event.getEnrollmentId(), event.getCourseId());
 
-        saveAndPublishNotification(
+        saveNotification(
                 NotificationType.ENROLLMENT_APPROVED,
                 String.valueOf(event.getEmployeeId()),
                 message,
@@ -98,7 +93,7 @@ public class NotificationService {
                 "Congratulations! Your certificate %s has been generated for course %d.",
                 event.getCertificateNumber(), event.getCourseId());
 
-        saveAndPublishNotification(
+        saveNotification(
                 NotificationType.CERTIFICATE_GENERATED,
                 String.valueOf(event.getEmployeeId()),
                 message,
@@ -107,26 +102,8 @@ public class NotificationService {
         );
     }
 
-    @Transactional
-    @RabbitListener(queues = "course.completed")
-    public void handleCourseCompleted(CourseCompletedEvent event) {
-        log.info("Received CourseCompletedEvent for enrollment: {}", event.getEnrollmentId());
-
-        String message = String.format(
-                "You have completed course %d. Your enrollment ID is %d.",
-                event.getCourseId(), event.getEnrollmentId());
-
-        saveAndPublishNotification(
-                NotificationType.COURSE_COMPLETED,
-                String.valueOf(event.getEmployeeId()),
-                message,
-                String.valueOf(event.getEnrollmentId()),
-                "ENROLLMENT"
-        );
-    }
-
-    private void saveAndPublishNotification(NotificationType type, String recipientId, String message,
-                                            String referenceId, String referenceType) {
+    private void saveNotification(NotificationType type, String recipientId, String message,
+                                  String referenceId, String referenceType) {
         Notification notification = Notification.builder()
                 .type(type)
                 .recipientId(recipientId)
@@ -136,19 +113,7 @@ public class NotificationService {
                 .status(NotificationStatus.SENT)
                 .build();
 
-        Notification saved = notificationRepository.save(notification);
-
-        NotificationSentEvent event = NotificationSentEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("notification-service")
-                .notificationId(saved.getId())
-                .recipientId(recipientId)
-                .type(type.name())
-                .message(message)
-                .build();
-
-        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT, event);
-        log.info("Published NotificationSentEvent for notification: {}", saved.getId());
+        notificationRepository.save(notification);
+        log.info("Saved notification of type {} for recipient: {}", type, recipientId);
     }
 }

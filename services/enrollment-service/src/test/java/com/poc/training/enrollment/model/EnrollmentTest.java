@@ -48,7 +48,7 @@ class EnrollmentTest {
 
     @Test
     void shouldHaveAllArgsConstructor() {
-        Enrollment enrollment = new Enrollment(1L, 1L, 2L, EnrollmentStatus.PENDING, LocalDateTime.now(), null);
+        Enrollment enrollment = new Enrollment(1L, null, 1L, 2L, EnrollmentStatus.PENDING, LocalDateTime.now(), null);
         assertEquals(EnrollmentStatus.PENDING, enrollment.getStatus());
     }
 }

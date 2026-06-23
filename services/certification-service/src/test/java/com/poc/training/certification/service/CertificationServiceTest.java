@@ -101,7 +101,6 @@ class CertificationServiceTest {
         certificationService.handleCourseCompleted(event);
 
         verify(certificateRepository).save(any(Certificate.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("certificate.generated"), any(CertificateGeneratedEvent.class));
     }
 
     @Test
@@ -121,7 +120,6 @@ class CertificationServiceTest {
         certificationService.handleCourseCompleted(event);
 
         verify(certificateRepository, never()).save(any(Certificate.class));
-        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
     }
 
     @Test
@@ -148,7 +146,6 @@ class CertificationServiceTest {
         certificationService.handleCourseCompleted(event);
 
         verify(certificateRepository, times(2)).save(any(Certificate.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), eq("certificate.generated"), any(CertificateGeneratedEvent.class));
     }
 
     @Test

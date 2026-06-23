@@ -28,20 +28,20 @@ class NotificationTest {
     void shouldCreateNotificationWithBuilder() {
         Notification notification = Notification.builder()
                 .id(1L)
-                .type(NotificationType.COURSE_COMPLETED)
+                .type(NotificationType.CERTIFICATE_GENERATED)
                 .recipientId("1")
-                .message("Course completed")
+                .message("Certificate generated")
                 .referenceId("1")
-                .referenceType("ENROLLMENT")
-                .status(NotificationStatus.DELIVERED)
+                .referenceType("CERTIFICATE")
+                .status(NotificationStatus.SENT)
                 .sentAt(LocalDateTime.now())
                 .build();
 
         assertEquals(1L, notification.getId());
-        assertEquals(NotificationType.COURSE_COMPLETED, notification.getType());
+        assertEquals(NotificationType.CERTIFICATE_GENERATED, notification.getType());
         assertEquals("1", notification.getRecipientId());
-        assertEquals("Course completed", notification.getMessage());
-        assertEquals(NotificationStatus.DELIVERED, notification.getStatus());
+        assertEquals("Certificate generated", notification.getMessage());
+        assertEquals(NotificationStatus.SENT, notification.getStatus());
     }
 
     @Test

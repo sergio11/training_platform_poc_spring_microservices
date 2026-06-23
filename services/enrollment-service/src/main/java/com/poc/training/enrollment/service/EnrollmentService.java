@@ -19,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -91,7 +93,10 @@ public class EnrollmentService {
                 .courseId(courseId)
                 .build();
 
-        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED, event);
+        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
+                RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED,
+                event));
         log.info("Published EnrollmentCreatedEvent for enrollment: {}", saved.getId());
 
         return toResponse(saved);
@@ -113,18 +118,26 @@ public class EnrollmentService {
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         Enrollment saved = enrollmentRepository.save(enrollment);
 
-        trainingCatalogClient.incrementEnrolledCount(saved.getCourseId());
-
-        EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("enrollment-service")
-                .enrollmentId(saved.getId())
-                .employeeId(saved.getEmployeeId())
-                .courseId(saved.getCourseId())
-                .build();
-
-        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED, event);
+        Long courseId = saved.getCourseId();
+        sendAfterCommit(() -> {
+            try {
+                trainingCatalogClient.incrementEnrolledCount(courseId);
+            } catch (Exception e) {
+                log.error("Failed to increment enrolled count for course {}: {}", courseId, e.getMessage());
+            }
+            EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .timestamp(LocalDateTime.now())
+                    .source("enrollment-service")
+                    .enrollmentId(saved.getId())
+                    .employeeId(saved.getEmployeeId())
+                    .courseId(saved.getCourseId())
+                    .build();
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConstants.EXCHANGE,
+                    RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED,
+                    event);
+        });
         log.info("Published EnrollmentApprovedEvent for enrollment: {}", saved.getId());
 
         return toResponse(saved);
@@ -156,9 +169,29 @@ public class EnrollmentService {
                 .courseId(saved.getCourseId())
                 .build();
 
-        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED, event);
+        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
+                RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED,
+                event));
         log.info("Published CourseCompletedEvent for enrollment: {}", saved.getId());
 
         return toResponse(saved);
+    }
+
+    private void sendAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        action.run();
+                    } catch (Exception e) {
+                        log.error("Failed to execute after commit action: {}", e.getMessage());
+                    }
+                }
+            });
+        } else {
+            action.run();
+        }
     }
 }

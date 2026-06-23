@@ -57,7 +57,7 @@ class NotificationControllerTest {
         NotificationResponse r1 = NotificationResponse.builder()
                 .id(1L).recipientId("1").type("ENROLLMENT_CREATED").message("M1").status("SENT").build();
         NotificationResponse r2 = NotificationResponse.builder()
-                .id(2L).recipientId("1").type("COURSE_COMPLETED").message("M2").status("SENT").build();
+                .id(2L).recipientId("1").type("CERTIFICATE_GENERATED").message("M2").status("SENT").build();
 
         org.springframework.data.domain.Page<NotificationResponse> page =
                 new PageImpl<>(Arrays.asList(r1, r2),
