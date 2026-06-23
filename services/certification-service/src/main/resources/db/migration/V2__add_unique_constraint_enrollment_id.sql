@@ -1,0 +1,1 @@
+ALTER TABLE certificates ADD CONSTRAINT uk_enrollment_id UNIQUE (enrollment_id);

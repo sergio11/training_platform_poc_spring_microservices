@@ -107,6 +107,24 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    @RabbitListener(queues = "course.completed")
+    public void handleCourseCompleted(CourseCompletedEvent event) {
+        log.info("Received CourseCompletedEvent for enrollment: {}", event.getEnrollmentId());
+
+        String message = String.format(
+                "You have completed course %d. Your enrollment ID is %d.",
+                event.getCourseId(), event.getEnrollmentId());
+
+        saveAndPublishNotification(
+                NotificationType.COURSE_COMPLETED,
+                String.valueOf(event.getEmployeeId()),
+                message,
+                String.valueOf(event.getEnrollmentId()),
+                "ENROLLMENT"
+        );
+    }
+
     private void saveAndPublishNotification(NotificationType type, String recipientId, String message,
                                             String referenceId, String referenceType) {
         Notification notification = Notification.builder()

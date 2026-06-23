@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,6 +18,7 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
     public ResponseEntity<Page<NotificationResponse>> getNotificationsByRecipientId(
             @RequestParam String recipientId,
             @RequestParam(defaultValue = "0") int page,
@@ -26,6 +28,7 @@ public class NotificationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
     public ResponseEntity<NotificationResponse> getNotificationById(@PathVariable Long id) {
         return ResponseEntity.ok(notificationService.findById(id));
     }

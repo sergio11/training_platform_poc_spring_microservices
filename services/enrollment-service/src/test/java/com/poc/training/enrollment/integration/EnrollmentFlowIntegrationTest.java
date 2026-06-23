@@ -6,7 +6,6 @@ import com.poc.training.enrollment.repository.EnrollmentRepository;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.EnrollmentCreatedEvent;
 import com.poc.training.shared.event.EnrollmentApprovedEvent;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@Disabled("Requires Docker/Podman - run manually when container engine is available")
 class EnrollmentFlowIntegrationTest {
 
     @Container

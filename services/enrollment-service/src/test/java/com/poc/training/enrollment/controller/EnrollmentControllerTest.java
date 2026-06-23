@@ -49,6 +49,48 @@ class EnrollmentControllerTest {
     }
 
     @Test
+    void shouldReturnPaginatedEnrollments() throws Exception {
+        EnrollmentResponse r1 = EnrollmentResponse.builder()
+                .id(1L).employeeId(1L).courseId(1L).status("PENDING").build();
+        EnrollmentResponse r2 = EnrollmentResponse.builder()
+                .id(2L).employeeId(1L).courseId(2L).status("APPROVED").build();
+
+        org.springframework.data.domain.Page<EnrollmentResponse> page =
+                new PageImpl<>(Arrays.asList(r1, r2),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 2);
+
+        when(enrollmentService.findByEmployeeId(eq(1L), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/enrollments")
+                        .param("employeeId", "1")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.number").value(0));
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenNoEnrollments() throws Exception {
+        org.springframework.data.domain.Page<EnrollmentResponse> emptyPage =
+                new PageImpl<>(Arrays.asList(),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 0);
+
+        when(enrollmentService.findByEmployeeId(eq(999L), any())).thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/v1/enrollments")
+                        .param("employeeId", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
+    }
+
+    @Test
     void shouldReturnEnrollmentById() throws Exception {
         EnrollmentResponse response = EnrollmentResponse.builder()
                 .id(1L)

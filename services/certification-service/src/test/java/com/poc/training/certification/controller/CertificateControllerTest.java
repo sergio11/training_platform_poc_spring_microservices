@@ -51,6 +51,48 @@ class CertificateControllerTest {
     }
 
     @Test
+    void shouldReturnPaginatedCertificates() throws Exception {
+        CertificateResponse c1 = CertificateResponse.builder()
+                .id(1L).employeeId(1L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        CertificateResponse c2 = CertificateResponse.builder()
+                .id(2L).employeeId(1L).courseId(2L).certificateNumber("CERT-002").issuedAt(LocalDateTime.now()).build();
+
+        org.springframework.data.domain.Page<CertificateResponse> page =
+                new PageImpl<>(Arrays.asList(c1, c2),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 2);
+
+        when(certificationService.findByEmployeeId(eq(1L), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/certificates")
+                        .param("employeeId", "1")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.number").value(0));
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenNoCertificates() throws Exception {
+        org.springframework.data.domain.Page<CertificateResponse> emptyPage =
+                new PageImpl<>(Arrays.asList(),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 0);
+
+        when(certificationService.findByEmployeeId(eq(999L), any())).thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/v1/certificates")
+                        .param("employeeId", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
+    }
+
+    @Test
     void shouldReturnCertificateById() throws Exception {
         CertificateResponse c = CertificateResponse.builder()
                 .id(1L)

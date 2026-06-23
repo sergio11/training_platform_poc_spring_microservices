@@ -26,6 +26,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue courseCompletedQueue() {
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_COURSE_COMPLETED).build();
+    }
+
+    @Bean
     public Queue certificateGeneratedQueue() {
         return QueueBuilder.durable(RabbitMQConstants.QUEUE_CERTIFICATE_GENERATED).build();
     }
@@ -38,6 +43,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding enrollmentApprovedBinding(Queue enrollmentApprovedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(enrollmentApprovedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED);
+    }
+
+    @Bean
+    public Binding courseCompletedBinding(Queue courseCompletedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(courseCompletedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED);
     }
 
     @Bean

@@ -133,4 +133,30 @@ class NotificationServiceTest {
         verify(notificationRepository).save(any(Notification.class));
         verify(rabbitTemplate).convertAndSend(anyString(), eq("notification.sent"), any(NotificationSentEvent.class));
     }
+
+    @Test
+    void shouldHandleCourseCompletedEvent() {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleCourseCompleted(event);
+
+        verify(notificationRepository).save(argThat(n ->
+                n.getType() == NotificationType.COURSE_COMPLETED &&
+                n.getRecipientId().equals("1")
+        ));
+        verify(rabbitTemplate).convertAndSend(anyString(), eq("notification.sent"), any(NotificationSentEvent.class));
+    }
 }

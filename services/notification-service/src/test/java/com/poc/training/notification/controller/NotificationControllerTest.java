@@ -44,11 +44,54 @@ class NotificationControllerTest {
                 .sentAt(LocalDateTime.now())
                 .build();
 
-        when(notificationService.findByRecipientId(eq("1"), any())).thenReturn(new PageImpl<>(Arrays.asList(response)));
+        when(notificationService.findByRecipientId(eq("1"), any()))
+                .thenReturn(new PageImpl<>(Arrays.asList(response)));
 
         mockMvc.perform(get("/api/v1/notifications").param("recipientId", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].recipientId").value("1"));
+    }
+
+    @Test
+    void shouldReturnPaginatedNotifications() throws Exception {
+        NotificationResponse r1 = NotificationResponse.builder()
+                .id(1L).recipientId("1").type("ENROLLMENT_CREATED").message("M1").status("SENT").build();
+        NotificationResponse r2 = NotificationResponse.builder()
+                .id(2L).recipientId("1").type("COURSE_COMPLETED").message("M2").status("SENT").build();
+
+        org.springframework.data.domain.Page<NotificationResponse> page =
+                new PageImpl<>(Arrays.asList(r1, r2),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 2);
+
+        when(notificationService.findByRecipientId(eq("1"), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/notifications")
+                        .param("recipientId", "1")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.number").value(0));
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenNoNotifications() throws Exception {
+        org.springframework.data.domain.Page<NotificationResponse> emptyPage =
+                new PageImpl<>(Arrays.asList(),
+                        org.springframework.data.domain.PageRequest.of(0, 20), 0);
+
+        when(notificationService.findByRecipientId(eq("999"), any())).thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/v1/notifications")
+                        .param("recipientId", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
     }
 
     @Test

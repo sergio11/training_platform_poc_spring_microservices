@@ -5,8 +5,8 @@ import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.shared.event.*;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
@@ -19,14 +19,15 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@Disabled("Requires Docker/Podman - run manually when container engine is available")
 class NotificationFlowIntegrationTest {
 
     @Container
@@ -49,6 +50,9 @@ class NotificationFlowIntegrationTest {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     @Test
     void contextLoads() {
@@ -205,5 +209,105 @@ class NotificationFlowIntegrationTest {
         var notifications = notificationRepository.findByReferenceIdAndReferenceType("1", "CERTIFICATE");
         assertEquals(1, notifications.size());
         assertEquals(NotificationType.CERTIFICATE_GENERATED, notifications.get(0).getType());
+    }
+
+    @Test
+    void listenerShouldProcessEnrollmentCreatedEvent() throws Exception {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(100L)
+                .employeeId(100L)
+                .courseId(100L)
+                .build();
+
+        long beforeCount = notificationRepository.findByRecipientId("100", PageRequest.of(0, 10)).getTotalElements();
+
+        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED, event);
+
+        waitForNotification("100", beforeCount + 1);
+
+        var notifications = notificationRepository.findByRecipientId("100", PageRequest.of(0, 10));
+        assertEquals(1, notifications.getContent().size());
+
+        Notification saved = notifications.getContent().get(0);
+        assertEquals(NotificationType.ENROLLMENT_CREATED, saved.getType());
+        assertEquals("100", saved.getRecipientId());
+        assertEquals("ENROLLMENT", saved.getReferenceType());
+        assertEquals("100", saved.getReferenceId());
+        assertEquals(NotificationStatus.SENT, saved.getStatus());
+        assertNotNull(saved.getSentAt());
+    }
+
+    @Test
+    void listenerShouldProcessEnrollmentApprovedEvent() throws Exception {
+        EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(200L)
+                .employeeId(200L)
+                .courseId(200L)
+                .build();
+
+        long beforeCount = notificationRepository.findByRecipientId("200", PageRequest.of(0, 10)).getTotalElements();
+
+        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED, event);
+
+        waitForNotification("200", beforeCount + 1);
+
+        var notifications = notificationRepository.findByRecipientId("200", PageRequest.of(0, 10));
+        assertEquals(1, notifications.getContent().size());
+
+        Notification saved = notifications.getContent().get(0);
+        assertEquals(NotificationType.ENROLLMENT_APPROVED, saved.getType());
+        assertEquals("200", saved.getRecipientId());
+        assertEquals("ENROLLMENT", saved.getReferenceType());
+        assertEquals(NotificationStatus.SENT, saved.getStatus());
+    }
+
+    @Test
+    void listenerShouldProcessCertificateGeneratedEvent() throws Exception {
+        CertificateGeneratedEvent event = CertificateGeneratedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("certification-service")
+                .certificateId(300L)
+                .enrollmentId(300L)
+                .employeeId(300L)
+                .courseId(300L)
+                .certificateNumber("CERT-99999")
+                .build();
+
+        long beforeCount = notificationRepository.findByRecipientId("300", PageRequest.of(0, 10)).getTotalElements();
+
+        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED, event);
+
+        waitForNotification("300", beforeCount + 1);
+
+        var notifications = notificationRepository.findByRecipientId("300", PageRequest.of(0, 10));
+        assertEquals(1, notifications.getContent().size());
+
+        Notification saved = notifications.getContent().get(0);
+        assertEquals(NotificationType.CERTIFICATE_GENERATED, saved.getType());
+        assertEquals("300", saved.getRecipientId());
+        assertEquals("CERTIFICATE", saved.getReferenceType());
+        assertEquals("300", saved.getReferenceId());
+        assertTrue(saved.getMessage().contains("CERT-99999"));
+        assertEquals(NotificationStatus.SENT, saved.getStatus());
+    }
+
+    private void waitForNotification(String recipientId, long expectedCount) throws Exception {
+        long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
+        while (System.currentTimeMillis() < deadline) {
+            long count = notificationRepository.findByRecipientId(recipientId, PageRequest.of(0, 10)).getTotalElements();
+            if (count >= expectedCount) return;
+            Thread.sleep(200);
+        }
+        fail("Timed out waiting for notification for recipient: " + recipientId);
     }
 }

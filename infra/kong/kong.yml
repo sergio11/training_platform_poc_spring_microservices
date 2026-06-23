@@ -5,22 +5,22 @@ consumers:
     jwt_secrets:
       - key: training-catalog-client
         secret: catalog-secret-2024
-        algorithm: RS256
+        algorithm: HS256
   - username: training-enrollment-client
     jwt_secrets:
       - key: training-enrollment-client
         secret: enrollment-secret-2024
-        algorithm: RS256
+        algorithm: HS256
   - username: training-certification-client
     jwt_secrets:
       - key: training-certification-client
         secret: certification-secret-2024
-        algorithm: RS256
+        algorithm: HS256
   - username: training-notification-client
     jwt_secrets:
       - key: training-notification-client
         secret: notification-secret-2024
-        algorithm: RS256
+        algorithm: HS256
 
 services:
   - name: training-catalog-service
