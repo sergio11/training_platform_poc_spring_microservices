@@ -1,5 +1,8 @@
 package com.poc.training.notification.model;
 
 public enum NotificationStatus {
-    SENT
+    PENDING,
+    SENT,
+    DELIVERED,
+    FAILED
 }

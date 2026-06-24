@@ -117,4 +117,39 @@ class CourseServiceTest {
         when(courseRepository.incrementEnrolledCountIfAvailable(1L)).thenReturn(0);
         assertThrows(BusinessException.class, () -> courseService.incrementEnrolledCount(1L));
     }
+
+    @Test
+    void shouldThrowExceptionWhenCourseNotActive() {
+        when(courseRepository.incrementEnrolledCountIfAvailable(1L)).thenReturn(0);
+        assertThrows(BusinessException.class, () -> courseService.incrementEnrolledCount(1L));
+        verify(courseRepository, times(1)).incrementEnrolledCountIfAvailable(1L);
+    }
+
+    @Test
+    void shouldMarkCourseAsCompleted() {
+        Course course = Course.builder().id(1L).title("Java Basics").status(CourseStatus.ACTIVE).build();
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CourseResponse result = courseService.markAsCompleted(1L);
+        assertEquals(CourseStatus.COMPLETED.name(), result.getStatus());
+        verify(courseRepository, times(1)).save(any(Course.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenMarkingInactiveCourseAsCompleted() {
+        Course course = Course.builder().id(1L).title("Java Basics").status(CourseStatus.INACTIVE).build();
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+
+        assertThrows(BusinessException.class, () -> courseService.markAsCompleted(1L));
+        verify(courseRepository, never()).save(any(Course.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenMarkingAlreadyCompletedCourse() {
+        Course course = Course.builder().id(1L).title("Java Basics").status(CourseStatus.COMPLETED).build();
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+
+        assertThrows(BusinessException.class, () -> courseService.markAsCompleted(1L));
+    }
 }

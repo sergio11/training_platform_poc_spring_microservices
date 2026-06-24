@@ -83,6 +83,21 @@ public class CourseService {
     }
 
     @Transactional
+    public CourseResponse markAsCompleted(Long id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));
+
+        if (course.getStatus() != CourseStatus.ACTIVE) {
+            throw new BusinessException(
+                "Cannot complete course in status: " + course.getStatus() + ". Expected: ACTIVE"
+            );
+        }
+
+        course.setStatus(CourseStatus.COMPLETED);
+        return toResponse(courseRepository.save(course));
+    }
+
+    @Transactional
     public void incrementEnrolledCount(Long courseId) {
         int updated = courseRepository.incrementEnrolledCountIfAvailable(courseId);
         if (updated == 0) {

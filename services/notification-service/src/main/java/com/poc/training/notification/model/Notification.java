@@ -42,7 +42,7 @@ public class Notification {
     protected void onCreate() {
         sentAt = LocalDateTime.now();
         if (status == null) {
-            status = NotificationStatus.SENT;
+            status = NotificationStatus.PENDING;
         }
     }
 }

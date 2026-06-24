@@ -60,4 +60,10 @@ public class CourseController {
         courseService.incrementEnrolledCount(id);
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('instructor', 'admin')")
+    public ResponseEntity<CourseResponse> markCourseAsCompleted(@PathVariable Long id) {
+        return ResponseEntity.ok(courseService.markAsCompleted(id));
+    }
 }

@@ -5,6 +5,7 @@ import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.repository.NotificationRepository;
+import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ class NotificationServiceTest {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private NotificationSender notificationSender;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -70,6 +74,7 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
@@ -78,7 +83,8 @@ class NotificationServiceTest {
 
         notificationService.handleEnrollmentCreated(event);
 
-        verify(notificationRepository).save(argThat(n ->
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.ENROLLMENT_CREATED &&
                 n.getRecipientId().equals("1")
         ));
@@ -95,6 +101,7 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
@@ -103,7 +110,8 @@ class NotificationServiceTest {
 
         notificationService.handleEnrollmentApproved(event);
 
-        verify(notificationRepository).save(argThat(n ->
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.ENROLLMENT_APPROVED &&
                 n.getRecipientId().equals("1")
         ));
@@ -122,6 +130,7 @@ class NotificationServiceTest {
                 .certificateNumber("CERT-12345")
                 .build();
 
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
@@ -130,8 +139,86 @@ class NotificationServiceTest {
 
         notificationService.handleCertificateGenerated(event);
 
-        verify(notificationRepository).save(argThat(n ->
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.CERTIFICATE_GENERATED &&
+                n.getRecipientId().equals("1")
+        ));
+    }
+
+    @Test
+    void shouldMarkNotificationAsFailedWhenSenderReturnsFalse() {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(notificationSender.send(any(Notification.class))).thenReturn(false);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleEnrollmentCreated(event);
+
+        verify(notificationRepository, times(2)).save(argThat(n ->
+                n.getStatus() == NotificationStatus.FAILED
+        ));
+    }
+
+    @Test
+    void shouldMarkNotificationAsFailedWhenSenderThrowsException() {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(notificationSender.send(any(Notification.class))).thenThrow(new RuntimeException("Send failed"));
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleEnrollmentCreated(event);
+
+        verify(notificationRepository, times(2)).save(argThat(n ->
+                n.getStatus() == NotificationStatus.FAILED
+        ));
+    }
+
+    @Test
+    void shouldHandleCourseCompletedEvent() {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleCourseCompleted(event);
+
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
+                n.getType() == NotificationType.COURSE_COMPLETED &&
                 n.getRecipientId().equals("1")
         ));
     }

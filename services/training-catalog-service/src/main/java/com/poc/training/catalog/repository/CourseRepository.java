@@ -15,6 +15,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Page<Course> findByStatus(CourseStatus status, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE Course c SET c.enrolledCount = c.enrolledCount + 1 WHERE c.id = :courseId AND c.enrolledCount < c.capacity")
+    @Query("UPDATE Course c SET c.enrolledCount = c.enrolledCount + 1 WHERE c.id = :courseId AND c.enrolledCount < c.capacity AND c.status = 'ACTIVE'")
     int incrementEnrolledCountIfAvailable(@Param("courseId") Long courseId);
 }

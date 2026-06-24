@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
+
 @Slf4j
 @Component
 public class TrainingCatalogClient {
@@ -29,7 +31,7 @@ public class TrainingCatalogClient {
                 .uri("/api/v1/courses/{id}", courseId)
                 .retrieve()
                 .bodyToMono(CourseDTO.class)
-                .block();
+                .block(Duration.ofSeconds(5));
     }
 
     @CircuitBreaker(name = "catalogService", fallbackMethod = "incrementEnrolledCountFallback")
@@ -40,7 +42,7 @@ public class TrainingCatalogClient {
                 .uri("/api/v1/courses/{id}/enroll", courseId)
                 .retrieve()
                 .bodyToMono(Void.class)
-                .block();
+                .block(Duration.ofSeconds(5));
     }
 
     public CourseDTO getCourseFallback(Long courseId, Throwable throwable) {

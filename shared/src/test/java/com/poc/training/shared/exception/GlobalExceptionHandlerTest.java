@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.util.List;
@@ -72,6 +74,47 @@ class GlobalExceptionHandlerTest {
         assertTrue(message.contains("title: Title is required"));
         assertTrue(message.contains("instructor: Instructor is required"));
         assertNotNull(response.getBody().get("timestamp"));
+    }
+
+    @Test
+    void shouldReturn400ForMalformedJson() {
+        org.springframework.http.converter.HttpMessageNotReadableException ex =
+                new org.springframework.http.converter.HttpMessageNotReadableException("Malformed JSON", null);
+
+        ResponseEntity<Map<String, Object>> response = handler.handleMalformedJson(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(400, response.getBody().get("status"));
+        assertEquals("Bad Request", response.getBody().get("error"));
+        assertEquals("Malformed request body", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn403ForAccessDenied() {
+        AccessDeniedException ex = new AccessDeniedException("Access denied");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleAccessDenied(ex);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(403, response.getBody().get("status"));
+        assertEquals("Forbidden", response.getBody().get("error"));
+        assertEquals("You don't have permission to access this resource", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn405ForMethodNotSupported() {
+        HttpRequestMethodNotSupportedException ex =
+                new HttpRequestMethodNotSupportedException("DELETE");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleMethodNotSupported(ex);
+
+        assertEquals(HttpStatus.METHOD_NOT_ALLOWED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(405, response.getBody().get("status"));
+        assertEquals("Method Not Allowed", response.getBody().get("error"));
+        assertTrue(((String) response.getBody().get("message")).contains("DELETE"));
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.repository.NotificationRepository;
+import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
 import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.shared.exception.ResourceNotFoundException;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationSender notificationSender;
 
     public static NotificationResponse toResponse(Notification notification) {
         return NotificationResponse.builder()
@@ -102,6 +104,24 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    @RabbitListener(queues = "course.completed")
+    public void handleCourseCompleted(CourseCompletedEvent event) {
+        log.info("Received CourseCompletedEvent for enrollment: {}", event.getEnrollmentId());
+
+        String message = String.format(
+                "You have completed course %d. Your enrollment ID is %d.",
+                event.getCourseId(), event.getEnrollmentId());
+
+        saveNotification(
+                NotificationType.COURSE_COMPLETED,
+                String.valueOf(event.getEmployeeId()),
+                message,
+                String.valueOf(event.getEnrollmentId()),
+                "ENROLLMENT"
+        );
+    }
+
     private void saveNotification(NotificationType type, String recipientId, String message,
                                   String referenceId, String referenceType) {
         Notification notification = Notification.builder()
@@ -110,10 +130,19 @@ public class NotificationService {
                 .message(message)
                 .referenceId(referenceId)
                 .referenceType(referenceType)
-                .status(NotificationStatus.SENT)
+                .status(NotificationStatus.PENDING)
                 .build();
 
-        notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
         log.info("Saved notification of type {} for recipient: {}", type, recipientId);
+
+        try {
+            boolean sent = notificationSender.send(saved);
+            saved.setStatus(sent ? NotificationStatus.DELIVERED : NotificationStatus.FAILED);
+        } catch (Exception e) {
+            log.error("Failed to send notification {}: {}", saved.getId(), e.getMessage());
+            saved.setStatus(NotificationStatus.FAILED);
+        }
+        notificationRepository.save(saved);
     }
 }

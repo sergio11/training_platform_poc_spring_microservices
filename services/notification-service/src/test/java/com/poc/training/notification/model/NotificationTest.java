@@ -20,7 +20,7 @@ class NotificationTest {
 
         notification.onCreate();
 
-        assertEquals(NotificationStatus.SENT, notification.getStatus());
+        assertEquals(NotificationStatus.PENDING, notification.getStatus());
         assertNotNull(notification.getSentAt());
     }
 

@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -46,5 +47,27 @@ public class SecurityConfig {
                 .collect(Collectors.toList());
         });
         return converter;
+    }
+
+    public static boolean isEmployeeOnly(Jwt jwt) {
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess == null || !realmAccess.containsKey("roles")) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        List<String> roles = (List<String>) realmAccess.get("roles");
+        return roles.contains("employee") && !roles.contains("admin") && !roles.contains("instructor");
+    }
+
+    public static Long extractEmployeeId(Jwt jwt) {
+        List<String> employeeIds = jwt.getClaimAsStringList("employeeId");
+        if (employeeIds != null && !employeeIds.isEmpty()) {
+            try {
+                return Long.parseLong(employeeIds.get(0));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 }

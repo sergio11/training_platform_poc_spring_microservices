@@ -3,6 +3,8 @@ package com.poc.training.shared.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -54,6 +56,26 @@ public class GlobalExceptionHandler {
             "status", 400,
             "error", "Bad Request",
             "message", "Malformed request body"
+        ));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+            "timestamp", LocalDateTime.now(),
+            "status", 403,
+            "error", "Forbidden",
+            "message", "You don't have permission to access this resource"
+        ));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(Map.of(
+            "timestamp", LocalDateTime.now(),
+            "status", 405,
+            "error", "Method Not Allowed",
+            "message", "HTTP method " + ex.getMethod() + " is not supported for this endpoint"
         ));
     }
 

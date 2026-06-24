@@ -118,7 +118,10 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["admin"]
+      "realmRoles": ["admin"],
+      "attributes": {
+        "employeeId": ["1"]
+      }
     },
     {
       "username": "instructor1",
@@ -133,7 +136,10 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["instructor"]
+      "realmRoles": ["instructor"],
+      "attributes": {
+        "employeeId": ["2"]
+      }
     },
     {
       "username": "employee1",
@@ -148,7 +154,10 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["employee"]
+      "realmRoles": ["employee"],
+      "attributes": {
+        "employeeId": ["3"]
+      }
     }
   ],
   "defaultRoles": ["employee"]
