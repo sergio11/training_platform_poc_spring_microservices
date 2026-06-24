@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: enrollment-service
+  name: training-enrollment-service
   namespace: training-platform
   labels:
-    app: enrollment-service
+    app: training-enrollment-service
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: enrollment-service
+      app: training-enrollment-service
   template:
     metadata:
       labels:
-        app: enrollment-service
+        app: training-enrollment-service
     spec:
       containers:
-        - name: enrollment-service
-          image: enrollment-service:latest
+        - name: training-enrollment-service
+          image: training-enrollment-service:latest
           ports:
             - containerPort: 8082
           envFrom:
             - configMapRef:
-                name: enrollment-service-config
+                name: training-enrollment-config
             - secretRef:
                 name: training-enrollment-secret
           resources:

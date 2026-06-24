@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-keycloak
+  namespace: training-platform
+  labels:
+    app: training-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-keycloak
+  template:
+    metadata:
+      labels:
+        app: training-keycloak
+    spec:
+      containers:
+        - name: training-keycloak
+          image: quay.io/keycloak/keycloak:24.0.1
+          args:
+            - start-dev
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: training-keycloak-config
+            - secretRef:
+                name: training-keycloak-secret
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 5

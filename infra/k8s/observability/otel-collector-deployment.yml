@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-otel-collector
+  namespace: training-platform
+  labels:
+    app: training-otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-otel-collector
+  template:
+    metadata:
+      labels:
+        app: training-otel-collector
+    spec:
+      containers:
+        - name: training-otel-collector
+          image: otel/opentelemetry-collector-contrib:0.94.0
+          args:
+            - --config=/etc/otel/otel-collector-config.yml
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+            - containerPort: 8888
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otel/otel-collector-config.yml
+              subPath: otel-collector-config.yml
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8888
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8888
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: otel-config
+          configMap:
+            name: training-otel-collector-config

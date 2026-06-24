@@ -1,0 +1,10 @@
+.git
+.gradle
+**/build
+infra
+docs
+*.md
+.idea
+*.iml
+.vscode
+**/bin

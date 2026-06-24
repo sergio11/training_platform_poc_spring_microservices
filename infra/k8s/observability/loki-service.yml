@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+  namespace: training-platform
+  labels:
+    app: training-loki
+spec:
+  selector:
+    app: training-loki
+  ports:
+    - protocol: TCP
+      port: 3100
+      targetPort: 3100
+  type: ClusterIP

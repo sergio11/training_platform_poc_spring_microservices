@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-kong
+  namespace: training-platform
+  labels:
+    app: training-kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-kong
+  template:
+    metadata:
+      labels:
+        app: training-kong
+    spec:
+      initContainers:
+        - name: training-kong-migration
+          image: kong:3.6
+          command:
+            - kong
+            - migrations
+            - bootstrap
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+      containers:
+        - name: training-kong
+          image: kong:3.6
+          ports:
+            - containerPort: 8000
+            - containerPort: 8001
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: "/etc/kong/kong.yml"
+            - name: KONG_PROXY_ACCESS_LOG
+              value: "/dev/stdout"
+            - name: KONG_ADMIN_ACCESS_LOG
+              value: "/dev/stdout"
+            - name: KONG_PROXY_ERROR_LOG
+              value: "/dev/stderr"
+            - name: KONG_ADMIN_ERROR_LOG
+              value: "/dev/stderr"
+          volumeMounts:
+            - name: kong-config
+              mountPath: /etc/kong/kong.yml
+              subPath: kong.yml
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            exec:
+              command:
+                - kong
+                - health
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - kong
+                - health
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: kong-config
+          configMap:
+            name: training-kong-config

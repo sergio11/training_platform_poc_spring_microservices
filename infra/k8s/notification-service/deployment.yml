@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
+  name: training-notification-service
   namespace: training-platform
   labels:
-    app: notification-service
+    app: training-notification-service
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: notification-service
+      app: training-notification-service
   template:
     metadata:
       labels:
-        app: notification-service
+        app: training-notification-service
     spec:
       containers:
-        - name: notification-service
-          image: notification-service:latest
+        - name: training-notification-service
+          image: training-notification-service:latest
           ports:
             - containerPort: 8084
           envFrom:
             - configMapRef:
-                name: notification-service-config
+                name: training-notification-config
             - secretRef:
                 name: training-notification-secret
           resources:

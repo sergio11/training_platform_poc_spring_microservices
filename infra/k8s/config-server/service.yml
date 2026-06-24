@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: training-config-server
+  namespace: training-platform
+  labels:
+    app: training-config-server
+spec:
+  selector:
+    app: training-config-server
+  ports:
+    - protocol: TCP
+      port: 9999
+      targetPort: 9999
+  type: ClusterIP

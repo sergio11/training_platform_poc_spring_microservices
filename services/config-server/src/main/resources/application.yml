@@ -8,7 +8,7 @@ spring:
           search-locations: classpath:/configs
 
 server:
-  port: 8888
+  port: ${SERVER_PORT:9999}
 
 management:
   endpoints:

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: training-keycloak-config
+  namespace: training-platform
+data:
+  KC_DB: "postgres"
+  KC_DB_URL: "jdbc:postgresql://postgresql:5432/keycloak"
+  KC_DB_USERNAME: "postgres"
+  KC_HOSTNAME_STRICT: "false"
+  KC_HTTP_ENABLED: "true"
+  KC_PROXY: "edge"
+  KEYCLOAK_ADMIN: "admin"
+  KEYCLOAK_ADMIN_PASSWORD: "admin"
+  REALM: "training-realm"

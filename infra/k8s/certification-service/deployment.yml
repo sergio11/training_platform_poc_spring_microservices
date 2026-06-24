@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: certification-service
+  name: training-certification-service
   namespace: training-platform
   labels:
-    app: certification-service
+    app: training-certification-service
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: certification-service
+      app: training-certification-service
   template:
     metadata:
       labels:
-        app: certification-service
+        app: training-certification-service
     spec:
       containers:
-        - name: certification-service
-          image: certification-service:latest
+        - name: training-certification-service
+          image: training-certification-service:latest
           ports:
             - containerPort: 8083
           envFrom:
             - configMapRef:
-                name: certification-service-config
+                name: training-certification-config
             - secretRef:
                 name: training-certification-secret
           resources:

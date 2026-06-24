@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-config-server
+  namespace: training-platform
+  labels:
+    app: training-config-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-config-server
+  template:
+    metadata:
+      labels:
+        app: training-config-server
+    spec:
+      containers:
+        - name: training-config-server
+          image: training-config-server:latest
+          ports:
+            - containerPort: 9999
+          env:
+            - name: SERVER_PORT
+              value: "9999"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9999
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9999
+            initialDelaySeconds: 20
+            periodSeconds: 5

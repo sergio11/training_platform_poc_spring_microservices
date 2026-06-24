@@ -73,13 +73,14 @@ namespace :build do
     puts "Building container images..."
     services = [
       { name: 'training-catalog-service', port: 8081 },
-      { name: 'enrollment-service', port: 8082 },
-      { name: 'certification-service', port: 8083 },
-      { name: 'notification-service', port: 8084 }
+      { name: 'training-enrollment-service', port: 8082 },
+      { name: 'training-certification-service', port: 8083 },
+      { name: 'training-notification-service', port: 8084 },
+      { name: 'training-config-server', port: 9999 }
     ]
     services.each do |service|
       puts "Building #{service[:name]}..."
-      sh "cd services/#{service[:name]} && #{CONTAINER_ENGINE} build -t #{service[:name]}:latest ."
+      sh "#{CONTAINER_ENGINE} build -t #{service[:name]}:latest -f services/#{service[:name].sub('training-', '')}/Dockerfile ."
     end
     puts "All images built successfully!"
   end
@@ -144,11 +145,16 @@ namespace :k8s do
   task :deploy do
     puts "Deploying to Kubernetes..."
     sh "kubectl apply -f infra/k8s/namespace.yml"
+    sh "kubectl apply -f infra/k8s/postgresql/"
+    sh "kubectl apply -f infra/k8s/rabbitmq/"
+    sh "kubectl apply -f infra/k8s/keycloak/"
     sh "kubectl apply -f infra/k8s/config-server/"
     sh "kubectl apply -f infra/k8s/catalog-service/"
     sh "kubectl apply -f infra/k8s/enrollment-service/"
     sh "kubectl apply -f infra/k8s/certification-service/"
     sh "kubectl apply -f infra/k8s/notification-service/"
+    sh "kubectl apply -f infra/k8s/observability/"
+    sh "kubectl apply -f infra/k8s/kong/"
     puts "Deployment completed!"
   end
 

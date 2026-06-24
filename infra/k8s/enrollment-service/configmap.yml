@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: enrollment-service-config
+  name: training-enrollment-config
   namespace: training-platform
 data:
   SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql:5432/training_enrollment"

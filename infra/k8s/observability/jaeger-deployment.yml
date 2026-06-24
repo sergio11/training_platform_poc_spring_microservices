@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-jaeger
+  namespace: training-platform
+  labels:
+    app: training-jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-jaeger
+  template:
+    metadata:
+      labels:
+        app: training-jaeger
+    spec:
+      containers:
+        - name: training-jaeger
+          image: jaegertracing/all-in-one:1.54
+          ports:
+            - containerPort: 16686
+            - containerPort: 14268
+            - containerPort: 4317
+            - containerPort: 4318
+          env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 10
+            periodSeconds: 5

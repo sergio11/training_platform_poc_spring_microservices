@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: enrollment-service
+  name: training-enrollment-service
   namespace: training-platform
   labels:
-    app: enrollment-service
+    app: training-enrollment-service
 spec:
   selector:
-    app: enrollment-service
+    app: training-enrollment-service
   ports:
     - protocol: TCP
       port: 8082

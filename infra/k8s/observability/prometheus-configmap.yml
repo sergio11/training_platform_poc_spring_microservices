@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: training-prometheus-config
+  namespace: training-platform
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      - job_name: 'otel-collector'
+        static_configs:
+          - targets: ['training-otel-collector:8888']
+      - job_name: 'training-catalog-service'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets: ['training-catalog-service:8081']
+      - job_name: 'training-enrollment-service'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets: ['training-enrollment-service:8082']
+      - job_name: 'training-certification-service'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets: ['training-certification-service:8083']
+      - job_name: 'training-notification-service'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets: ['training-notification-service:8084']

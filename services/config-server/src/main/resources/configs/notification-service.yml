@@ -1,24 +1,24 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/training_notification
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/training_notification
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
   
   jpa:
     hibernate:
       ddl-auto: validate
   
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
   
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/training-realm
+          issuer-uri: http://${KEYCLOAK_HOST:localhost}:${KEYCLOAK_PORT:8080}/realms/training-realm
 
 server:
   port: 8084

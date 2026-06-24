@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-loki
+  namespace: training-platform
+  labels:
+    app: training-loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: training-loki
+  template:
+    metadata:
+      labels:
+        app: training-loki
+    spec:
+      containers:
+        - name: training-loki
+          image: grafana/loki:2.9.4
+          ports:
+            - containerPort: 3100
+          args:
+            - -config.file=/etc/loki/loki-config.yml
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 10
+            periodSeconds: 5
