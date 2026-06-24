@@ -8,3 +8,7 @@ CREATE TABLE notifications (
     sent_at TIMESTAMP NOT NULL,
     status VARCHAR(255) NOT NULL
 );
+
+CREATE INDEX idx_notifications_recipient_id ON notifications(recipient_id);
+CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE INDEX idx_notifications_reference ON notifications(reference_id, reference_type);
