@@ -53,4 +53,18 @@ subprojects {
             html.required.set(true)
         }
     }
+
+    tasks.withType<JacocoCoverageVerification> {
+        violationRules {
+            rule {
+                limit {
+                    minimum = "0.50".toBigDecimal()
+                }
+            }
+        }
+    }
+
+    tasks.named("check") {
+        dependsOn("jacocoTestCoverageVerification")
+    }
 }

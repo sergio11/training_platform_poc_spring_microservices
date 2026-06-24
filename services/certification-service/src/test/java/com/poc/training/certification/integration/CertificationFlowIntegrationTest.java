@@ -2,6 +2,7 @@ package com.poc.training.certification.integration;
 
 import com.poc.training.certification.model.Certificate;
 import com.poc.training.certification.repository.CertificateRepository;
+import com.poc.training.certification.service.CertificationService;
 import com.poc.training.shared.event.CertificateGeneratedEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class CertificationFlowIntegrationTest {
 
     @Autowired
     private CertificateRepository certificateRepository;
+
+    @Autowired
+    private CertificationService certificationService;
 
     @Test
     void contextLoads() {
@@ -125,13 +129,17 @@ class CertificationFlowIntegrationTest {
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
                 .source("enrollment-service")
-                .enrollmentId(1L)
-                .employeeId(1L)
-                .courseId(1L)
+                .enrollmentId(10L)
+                .employeeId(10L)
+                .courseId(10L)
                 .build();
 
-        assertNotNull(event.getEnrollmentId());
-        assertEquals("enrollment-service", event.getSource());
+        certificationService.handleCourseCompleted(event);
+
+        var cert = certificateRepository.findByEnrollmentId(10L);
+        assertTrue(cert.isPresent());
+        assertEquals(10L, cert.get().getEmployeeId());
+        assertNotNull(cert.get().getCertificateNumber());
     }
 
     @Test
@@ -155,17 +163,21 @@ class CertificationFlowIntegrationTest {
     @Test
     void shouldNotDuplicateCertificateForSameEnrollment() {
         Certificate cert1 = Certificate.builder()
-                .enrollmentId(1L)
+                .enrollmentId(100L)
                 .employeeId(1L)
                 .courseId(1L)
                 .build();
-
         certificateRepository.save(cert1);
 
-        var existing = certificateRepository.findByEnrollmentId(1L);
+        var existing = certificateRepository.findByEnrollmentId(100L);
         assertTrue(existing.isPresent());
 
-        var found = certificateRepository.findByEnrollmentId(1L);
-        assertTrue(found.isPresent());
+        Certificate cert2 = Certificate.builder()
+                .enrollmentId(100L)
+                .employeeId(2L)
+                .courseId(2L)
+                .build();
+
+        assertThrows(Exception.class, () -> certificateRepository.save(cert2));
     }
 }

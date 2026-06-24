@@ -158,6 +158,10 @@ class EnrollmentFlowIntegrationTest {
                 .build();
 
         assertNotNull(event.getEventId());
-        assertEquals("course.completed", "course.completed");
+        assertNotNull(event.getTimestamp());
+        assertEquals("enrollment-service", event.getSource());
+        assertEquals(1L, event.getEnrollmentId());
+        assertEquals(1L, event.getEmployeeId());
+        assertEquals(1L, event.getCourseId());
     }
 }

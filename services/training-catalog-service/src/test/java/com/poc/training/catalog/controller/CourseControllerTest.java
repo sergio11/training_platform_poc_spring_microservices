@@ -3,6 +3,7 @@ package com.poc.training.catalog.controller;
 import com.poc.training.catalog.dto.CourseRequest;
 import com.poc.training.catalog.dto.CourseResponse;
 import com.poc.training.catalog.service.CourseService;
+import com.poc.training.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -196,5 +197,20 @@ class CourseControllerTest {
     void shouldDeleteCourse() throws Exception {
         mockMvc.perform(delete("/api/v1/courses/1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldEnrollInCourse() throws Exception {
+        mockMvc.perform(post("/api/v1/courses/1/enroll"))
+                .andExpect(status().isOk());
+        verify(courseService).incrementEnrolledCount(1L);
+    }
+
+    @Test
+    void shouldReturn500WhenNoSeatsAvailable() throws Exception {
+        doThrow(new BusinessException("No available seats for course: 1"))
+                .when(courseService).incrementEnrolledCount(1L);
+        mockMvc.perform(post("/api/v1/courses/1/enroll"))
+                .andExpect(status().isBadRequest());
     }
 }
