@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgresql
+  name: training-postgresql
   namespace: training-platform
   labels:
     app: training-postgresql

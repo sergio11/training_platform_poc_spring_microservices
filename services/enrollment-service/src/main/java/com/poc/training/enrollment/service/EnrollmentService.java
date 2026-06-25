@@ -65,10 +65,10 @@ public class EnrollmentService {
         CourseDTO course = trainingCatalogClient.getCourse(courseId);
 
         List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED);
-        boolean alreadyEnrolled = enrollmentRepository.existsByEmployeeIdAndCourseIdAndStatusIn(
+        List<Enrollment> existing = enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(
                 employeeId, courseId, activeStatuses);
 
-        if (alreadyEnrolled) {
+        if (!existing.isEmpty()) {
             throw new BusinessException("Employee is already enrolled in this course");
         }
 

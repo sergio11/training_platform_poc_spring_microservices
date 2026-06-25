@@ -36,6 +36,7 @@ public class Notification {
     private LocalDateTime sentAt;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private NotificationStatus status;
 
     @PrePersist

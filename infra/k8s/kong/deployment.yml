@@ -15,16 +15,6 @@ spec:
       labels:
         app: training-kong
     spec:
-      initContainers:
-        - name: training-kong-migration
-          image: kong:3.6
-          command:
-            - kong
-            - migrations
-            - bootstrap
-          env:
-            - name: KONG_DATABASE
-              value: "off"
       containers:
         - name: training-kong
           image: kong:3.6

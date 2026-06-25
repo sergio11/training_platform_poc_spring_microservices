@@ -74,7 +74,7 @@ class EnrollmentServiceTest {
     void shouldEnrollEmployee() {
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(0).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
-        when(enrollmentRepository.existsByEmployeeIdAndCourseIdAndStatusIn(eq(1L), eq(1L), anyList())).thenReturn(false);
+        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());
         when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> {
             Enrollment e = inv.getArgument(0);
             e.setId(1L);
@@ -91,7 +91,7 @@ class EnrollmentServiceTest {
     void shouldThrowExceptionWhenAlreadyEnrolled() {
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(0).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
-        when(enrollmentRepository.existsByEmployeeIdAndCourseIdAndStatusIn(eq(1L), eq(1L), anyList())).thenReturn(true);
+        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of(Enrollment.builder().id(1L).build()));
 
         assertThrows(BusinessException.class, () -> enrollmentService.enroll(1L, 1L));
     }
@@ -100,7 +100,7 @@ class EnrollmentServiceTest {
     void shouldThrowExceptionWhenNoSeats() {
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(30).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
-        when(enrollmentRepository.existsByEmployeeIdAndCourseIdAndStatusIn(eq(1L), eq(1L), anyList())).thenReturn(false);
+        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());
 
         assertThrows(BusinessException.class, () -> enrollmentService.enroll(1L, 1L));
     }

@@ -67,6 +67,11 @@ public class CourseService {
     public CourseResponse update(Long id, CourseRequest request) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));
+        if (request.getCapacity() < course.getEnrolledCount()) {
+            throw new BusinessException(
+                "Cannot reduce capacity to " + request.getCapacity()
+                + ". Current enrolled count: " + course.getEnrolledCount());
+        }
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setInstructor(request.getInstructor());
