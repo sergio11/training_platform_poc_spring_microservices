@@ -120,28 +120,12 @@ public class EnrollmentService {
 
         Long courseId = saved.getCourseId();
         sendAfterCommit(() -> {
-            boolean incrementSuccess = false;
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries && !incrementSuccess; attempt++) {
-                try {
-                    trainingCatalogClient.incrementEnrolledCount(courseId);
-                    incrementSuccess = true;
-                } catch (Exception e) {
-                    log.warn("Attempt {}/{} to increment enrolled count for course {} failed: {}",
-                            attempt, maxRetries, courseId, e.getMessage());
-                    if (attempt < maxRetries) {
-                        try {
-                            Thread.sleep((long) Math.pow(2, attempt) * 500);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!incrementSuccess) {
-                log.error("Failed to increment enrolled count for course {} after {} attempts. " +
-                        "Manual intervention required.", courseId, maxRetries);
+            try {
+                trainingCatalogClient.incrementEnrolledCount(courseId);
+            } catch (Exception e) {
+                log.error("Failed to increment enrolled count for course {} after retries. " +
+                        "Enrollment {} approved but catalog count inconsistent. Error: {}",
+                        courseId, saved.getId(), e.getMessage());
             }
 
             EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()

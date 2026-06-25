@@ -24,6 +24,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: training-rabbitmq-config
+          volumeMounts:
+            - name: rabbitmq-definitions
+              mountPath: /etc/rabbitmq/definitions.json
+              subPath: definitions.json
+            - name: rabbitmq-definitions
+              mountPath: /etc/rabbitmq/rabbitmq.conf
+              subPath: rabbitmq.conf
           resources:
             requests:
               memory: "256Mi"
@@ -45,3 +52,7 @@ spec:
                 - check_port_connectivity
             initialDelaySeconds: 10
             periodSeconds: 5
+      volumes:
+        - name: rabbitmq-definitions
+          configMap:
+            name: training-rabbitmq-definitions

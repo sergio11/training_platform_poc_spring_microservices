@@ -162,9 +162,9 @@ This document describes the architecture of the Corporate Training Platform, a m
 - **Realm**: `training-realm`
 - **Clients**:
   - `training-catalog-client`
-  - `enrollment-client`
-  - `certification-client`
-  - `notification-client`
+  - `training-enrollment-client`
+  - `training-certification-client`
+  - `training-notification-client`
   - `training-frontend`
 
 ### Kong Gateway

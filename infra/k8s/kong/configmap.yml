@@ -12,8 +12,8 @@ data:
         routes:
           - name: catalog-routes
             paths:
-              - /api/catalog
-            strip_path: true
+              - /api/v1/courses
+            strip_path: false
             methods:
               - GET
               - POST
@@ -21,15 +21,24 @@ data:
               - DELETE
         plugins:
           - name: jwt
-        consumers:
-          - username: training-catalog-client
+            config:
+              uri_param_names: []
+              header_names:
+                - Authorization
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 100
+              policy: local
       - name: training-enrollment-service
         url: http://training-enrollment-service:8082
         routes:
           - name: enrollment-routes
             paths:
-              - /api/enrollment
-            strip_path: true
+              - /api/v1/enrollments
+            strip_path: false
             methods:
               - GET
               - POST
@@ -37,15 +46,24 @@ data:
               - DELETE
         plugins:
           - name: jwt
-        consumers:
-          - username: training-enrollment-client
+            config:
+              uri_param_names: []
+              header_names:
+                - Authorization
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 100
+              policy: local
       - name: training-certification-service
         url: http://training-certification-service:8083
         routes:
           - name: certification-routes
             paths:
-              - /api/certification
-            strip_path: true
+              - /api/v1/certificates
+            strip_path: false
             methods:
               - GET
               - POST
@@ -53,15 +71,24 @@ data:
               - DELETE
         plugins:
           - name: jwt
-        consumers:
-          - username: training-certification-client
+            config:
+              uri_param_names: []
+              header_names:
+                - Authorization
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 100
+              policy: local
       - name: training-notification-service
         url: http://training-notification-service:8084
         routes:
           - name: notification-routes
             paths:
-              - /api/notification
-            strip_path: true
+              - /api/v1/notifications
+            strip_path: false
             methods:
               - GET
               - POST
@@ -69,8 +96,17 @@ data:
               - DELETE
         plugins:
           - name: jwt
-        consumers:
-          - username: training-notification-client
+            config:
+              uri_param_names: []
+              header_names:
+                - Authorization
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 100
+              policy: local
     consumers:
       - username: training-catalog-client
       - username: training-enrollment-client

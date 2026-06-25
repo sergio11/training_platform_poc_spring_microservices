@@ -42,26 +42,27 @@ class TrainingCatalogClientTest {
     }
 
     @Test
-    void shouldThrowExceptionInGetCourseFallback() {
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> trainingCatalogClient.getCourseFallback(1L, new RuntimeException("Connection refused")));
-        assertTrue(exception.getMessage().contains("Catalog service unavailable"));
-        assertTrue(exception.getMessage().contains("1"));
+    void shouldReturnDefaultCourseInGetCourseFallback() {
+        CourseDTO result = trainingCatalogClient.getCourseFallback(1L, new RuntimeException("Connection refused"));
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        assertEquals(0, result.getCapacity());
+        assertEquals(0, result.getEnrolledCount());
     }
 
     @Test
-    void shouldThrowExceptionInIncrementEnrolledCountFallback() {
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> trainingCatalogClient.incrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
-        assertTrue(exception.getMessage().contains("Catalog service unavailable"));
-        assertTrue(exception.getMessage().contains("1"));
+    void shouldNotThrowInIncrementEnrolledCountFallback() {
+        assertDoesNotThrow(() ->
+                trainingCatalogClient.incrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
     }
 
     @Test
-    void shouldThrowExceptionInGetCourseFallbackWithNullId() {
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error")));
-        assertTrue(exception.getMessage().contains("Catalog service unavailable"));
+    void shouldReturnDefaultCourseInGetCourseFallbackWithNullId() {
+        CourseDTO result = trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error"));
+        assertNotNull(result);
+        assertNull(result.getId());
+        assertEquals(0, result.getCapacity());
+        assertEquals(0, result.getEnrolledCount());
     }
 
     @Test

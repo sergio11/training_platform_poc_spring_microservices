@@ -48,7 +48,7 @@
       "standardFlowEnabled": false
     },
     {
-      "clientId": "enrollment-client",
+      "clientId": "training-enrollment-client",
       "name": "Enrollment Service",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
@@ -62,7 +62,7 @@
       "standardFlowEnabled": false
     },
     {
-      "clientId": "certification-client",
+      "clientId": "training-certification-client",
       "name": "Certification Service",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
@@ -76,7 +76,7 @@
       "standardFlowEnabled": false
     },
     {
-      "clientId": "notification-client",
+      "clientId": "training-notification-client",
       "name": "Notification Service",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",

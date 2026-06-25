@@ -46,12 +46,15 @@ public class TrainingCatalogClient {
     }
 
     public CourseDTO getCourseFallback(Long courseId, Throwable throwable) {
-        log.error("Fallback called for getCourse with id: {}. Error: {}", courseId, throwable.getMessage());
-        throw new RuntimeException("Catalog service unavailable. Cannot validate course: " + courseId);
+        log.warn("Fallback called for getCourse with id: {}. Error: {}", courseId, throwable.getMessage());
+        return CourseDTO.builder()
+                .id(courseId)
+                .capacity(0)
+                .enrolledCount(0)
+                .build();
     }
 
     public void incrementEnrolledCountFallback(Long courseId, Throwable throwable) {
         log.error("Fallback called for incrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
-        throw new RuntimeException("Catalog service unavailable. Cannot increment enrollment count: " + courseId);
     }
 }
