@@ -41,13 +41,10 @@ data:
           "auto_delete": false
         },
         {
-          "name": "notification.sent",
+          "name": "enrollment.rejected",
           "vhost": "/",
           "durable": true,
-          "auto_delete": false,
-          "arguments": {
-            "x-message-ttl": 86400000
-          }
+          "auto_delete": false
         }
       ],
       "bindings": [
@@ -70,6 +67,14 @@ data:
         {
           "source": "training.exchange",
           "vhost": "/",
+          "destination": "enrollment.rejected",
+          "destination_type": "queue",
+          "routing_key": "enrollment.rejected",
+          "arguments": {}
+        },
+        {
+          "source": "training.exchange",
+          "vhost": "/",
           "destination": "course.completed",
           "destination_type": "queue",
           "routing_key": "course.completed",
@@ -81,14 +86,6 @@ data:
           "destination": "certificate.generated",
           "destination_type": "queue",
           "routing_key": "certificate.generated",
-          "arguments": {}
-        },
-        {
-          "source": "training.exchange",
-          "vhost": "/",
-          "destination": "notification.sent",
-          "destination_type": "queue",
-          "routing_key": "notification.sent",
           "arguments": {}
         }
       ]

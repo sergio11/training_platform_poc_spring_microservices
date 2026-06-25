@@ -9,6 +9,7 @@ import com.poc.training.enrollment.repository.EnrollmentRepository;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.EnrollmentApprovedEvent;
 import com.poc.training.shared.event.EnrollmentCreatedEvent;
+import com.poc.training.shared.event.EnrollmentRejectedEvent;
 import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
@@ -115,32 +116,26 @@ public class EnrollmentService {
             );
         }
 
+        Long courseId = enrollment.getCourseId();
+
+        trainingCatalogClient.incrementEnrolledCount(courseId);
+
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         Enrollment saved = enrollmentRepository.save(enrollment);
 
-        Long courseId = saved.getCourseId();
-        sendAfterCommit(() -> {
-            try {
-                trainingCatalogClient.incrementEnrolledCount(courseId);
-            } catch (Exception e) {
-                log.error("Failed to increment enrolled count for course {} after retries. " +
-                        "Enrollment {} approved but catalog count inconsistent. Error: {}",
-                        courseId, saved.getId(), e.getMessage());
-            }
+        EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(saved.getId())
+                .employeeId(saved.getEmployeeId())
+                .courseId(saved.getCourseId())
+                .build();
 
-            EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
-                    .eventId(UUID.randomUUID().toString())
-                    .timestamp(LocalDateTime.now())
-                    .source("enrollment-service")
-                    .enrollmentId(saved.getId())
-                    .employeeId(saved.getEmployeeId())
-                    .courseId(saved.getCourseId())
-                    .build();
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConstants.EXCHANGE,
-                    RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED,
-                    event);
-        });
+        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
+                RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED,
+                event));
         log.info("Published EnrollmentApprovedEvent for enrollment: {}", saved.getId());
 
         return toResponse(saved);
@@ -177,6 +172,40 @@ public class EnrollmentService {
                 RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED,
                 event));
         log.info("Published CourseCompletedEvent for enrollment: {}", saved.getId());
+
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public EnrollmentResponse reject(Long enrollmentId) {
+        log.info("Rejecting enrollment: {}", enrollmentId);
+
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
+
+        if (enrollment.getStatus() != EnrollmentStatus.PENDING) {
+            throw new BusinessException(
+                "Cannot reject enrollment in status: " + enrollment.getStatus() + ". Expected: PENDING"
+            );
+        }
+
+        enrollment.setStatus(EnrollmentStatus.REJECTED);
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(saved.getId())
+                .employeeId(saved.getEmployeeId())
+                .courseId(saved.getCourseId())
+                .build();
+
+        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
+                RabbitMQConstants.EXCHANGE,
+                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_REJECTED,
+                event));
+        log.info("Published EnrollmentRejectedEvent for enrollment: {}", saved.getId());
 
         return toResponse(saved);
     }

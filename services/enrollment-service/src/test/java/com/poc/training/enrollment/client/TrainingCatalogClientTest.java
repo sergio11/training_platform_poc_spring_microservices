@@ -51,8 +51,8 @@ class TrainingCatalogClientTest {
     }
 
     @Test
-    void shouldNotThrowInIncrementEnrolledCountFallback() {
-        assertDoesNotThrow(() ->
+    void shouldThrowInIncrementEnrolledCountFallback() {
+        assertThrows(RuntimeException.class, () ->
                 trainingCatalogClient.incrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
     }
 

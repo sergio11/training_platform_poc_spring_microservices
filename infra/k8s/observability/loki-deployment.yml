@@ -29,6 +29,11 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
+           volumeMounts:
+            - name: loki-config
+              mountPath: /etc/loki/loki-config.yml
+              subPath: loki-config.yml
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /ready
@@ -41,3 +46,7 @@ spec:
               port: 3100
             initialDelaySeconds: 10
             periodSeconds: 5
+      volumes:
+        - name: loki-config
+          configMap:
+            name: training-loki-config

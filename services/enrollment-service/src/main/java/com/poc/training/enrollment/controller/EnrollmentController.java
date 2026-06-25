@@ -70,4 +70,10 @@ public class EnrollmentController {
     public ResponseEntity<EnrollmentResponse> completeEnrollment(@PathVariable Long id) {
         return ResponseEntity.ok(enrollmentService.complete(id));
     }
+
+    @PatchMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('instructor', 'admin')")
+    public ResponseEntity<EnrollmentResponse> rejectEnrollment(@PathVariable Long id) {
+        return ResponseEntity.ok(enrollmentService.reject(id));
+    }
 }

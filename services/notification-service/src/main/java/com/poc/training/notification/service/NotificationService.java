@@ -105,6 +105,24 @@ public class NotificationService {
     }
 
     @Transactional
+    @RabbitListener(queues = "enrollment.rejected")
+    public void handleEnrollmentRejected(EnrollmentRejectedEvent event) {
+        log.info("Received EnrollmentRejectedEvent for enrollment: {}", event.getEnrollmentId());
+
+        String message = String.format(
+                "Your enrollment %d for course %d has been rejected.",
+                event.getEnrollmentId(), event.getCourseId());
+
+        saveNotification(
+                NotificationType.ENROLLMENT_REJECTED,
+                String.valueOf(event.getEmployeeId()),
+                message,
+                String.valueOf(event.getEnrollmentId()),
+                "ENROLLMENT"
+        );
+    }
+
+    @Transactional
     @RabbitListener(queues = "course.completed")
     public void handleCourseCompleted(CourseCompletedEvent event) {
         log.info("Received CourseCompletedEvent for enrollment: {}", event.getEnrollmentId());

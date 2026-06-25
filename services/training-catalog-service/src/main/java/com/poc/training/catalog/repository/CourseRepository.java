@@ -17,6 +17,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Page<Course> findByInstructorContainingIgnoreCase(String instructor, Pageable pageable);
     Page<Course> findByStatusAndTitleContainingIgnoreCase(CourseStatus status, String title, Pageable pageable);
     Page<Course> findByStatusAndInstructorContainingIgnoreCase(CourseStatus status, String instructor, Pageable pageable);
+    Page<Course> findByTitleContainingIgnoreCaseAndInstructorContainingIgnoreCase(String title, String instructor, Pageable pageable);
 
     @Modifying
     @Query("UPDATE Course c SET c.enrolledCount = c.enrolledCount + 1 WHERE c.id = :courseId AND c.enrolledCount < c.capacity AND c.status = 'ACTIVE'")

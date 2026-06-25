@@ -22,7 +22,7 @@ data:
         send_batch_size: 1024
     exporters:
       logging:
-        loglevel: debug
+        loglevel: info
       prometheus:
         endpoint: "0.0.0.0:8888"
         namespace: training

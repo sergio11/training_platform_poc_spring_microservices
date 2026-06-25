@@ -30,6 +30,14 @@ spec:
               mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
               subPath: datasources.yaml
               readOnly: true
+            - name: grafana-dashboards-provider
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+              readOnly: true
+            - name: grafana-dashboard-json
+              mountPath: /etc/grafana/provisioning/dashboards/training-dashboard.json
+              subPath: training-dashboard.json
+              readOnly: true
             - name: grafana-data
               mountPath: /var/lib/grafana
           resources:
@@ -53,6 +61,12 @@ spec:
             periodSeconds: 5
       volumes:
         - name: grafana-datasources
+          configMap:
+            name: training-grafana-config
+        - name: grafana-dashboards-provider
+          configMap:
+            name: training-grafana-config
+        - name: grafana-dashboard-json
           configMap:
             name: training-grafana-config
         - name: grafana-data

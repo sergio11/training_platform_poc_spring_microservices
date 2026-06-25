@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: training-postgresql
+  name: postgresql
   namespace: training-platform
   labels:
-    app: training-postgresql
+    app: postgresql
 spec:
-  serviceName: training-postgresql
+  serviceName: postgresql
   replicas: 1
   selector:
     matchLabels:
-      app: training-postgresql
+      app: postgresql
   template:
     metadata:
       labels:
-        app: training-postgresql
+        app: postgresql
     spec:
       containers:
-        - name: training-postgresql
+        - name: postgresql
           image: postgres:16-alpine
           ports:
             - containerPort: 5432

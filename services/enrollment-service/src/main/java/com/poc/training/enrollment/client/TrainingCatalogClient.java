@@ -56,5 +56,6 @@ public class TrainingCatalogClient {
 
     public void incrementEnrolledCountFallback(Long courseId, Throwable throwable) {
         log.error("Fallback called for incrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
+        throw new RuntimeException("Failed to increment enrolled count for course: " + courseId, throwable);
     }
 }

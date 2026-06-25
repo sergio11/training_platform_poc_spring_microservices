@@ -34,6 +34,12 @@
       "auto_delete": false
     },
     {
+      "name": "enrollment.rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
       "name": "notification.dlq",
       "vhost": "/",
       "durable": true,
@@ -55,6 +61,14 @@
       "destination": "enrollment.approved",
       "destination_type": "queue",
       "routing_key": "enrollment.approved",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "enrollment.rejected",
+      "destination_type": "queue",
+      "routing_key": "enrollment.rejected",
       "arguments": {}
     },
     {

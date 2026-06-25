@@ -61,6 +61,9 @@ public class CourseService {
         if (status != null) {
             return courseRepository.findByStatus(status, pageable).map(CourseService::toResponse);
         }
+        if (title != null && instructor != null) {
+            return courseRepository.findByTitleContainingIgnoreCaseAndInstructorContainingIgnoreCase(title, instructor, pageable).map(CourseService::toResponse);
+        }
         if (title != null) {
             return courseRepository.findByTitleContainingIgnoreCase(title, pageable).map(CourseService::toResponse);
         }
