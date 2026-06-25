@@ -124,6 +124,12 @@ public class NotificationService {
 
     private void saveNotification(NotificationType type, String recipientId, String message,
                                   String referenceId, String referenceType) {
+        if (notificationRepository.existsByReferenceIdAndReferenceTypeAndType(referenceId, referenceType, type)) {
+            log.info("Notification already exists for reference {}/{} type {}, skipping",
+                    referenceId, referenceType, type);
+            return;
+        }
+
         Notification notification = Notification.builder()
                 .type(type)
                 .recipientId(recipientId)

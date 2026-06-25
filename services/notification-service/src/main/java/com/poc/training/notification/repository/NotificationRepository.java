@@ -14,4 +14,5 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByRecipientId(String recipientId, Pageable pageable);
     List<Notification> findByType(NotificationType type);
     List<Notification> findByReferenceIdAndReferenceType(String referenceId, String referenceType);
+    boolean existsByReferenceIdAndReferenceTypeAndType(String referenceId, String referenceType, NotificationType type);
 }

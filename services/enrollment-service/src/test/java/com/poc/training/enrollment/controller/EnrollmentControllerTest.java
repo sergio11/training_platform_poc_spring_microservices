@@ -1,5 +1,6 @@
 package com.poc.training.enrollment.controller;
 
+import com.poc.training.enrollment.dto.EnrollmentRequest;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.service.EnrollmentService;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -117,7 +119,9 @@ class EnrollmentControllerTest {
 
         when(enrollmentService.enroll(eq(1L), eq(1L))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/enrollments").param("employeeId", "1").param("courseId", "1"))
+        mockMvc.perform(post("/api/v1/enrollments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"employeeId\":1,\"courseId\":1}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.employeeId").value(1));
     }

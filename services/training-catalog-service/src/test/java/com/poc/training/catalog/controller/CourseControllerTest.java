@@ -50,7 +50,7 @@ class CourseControllerTest {
                 .status("ACTIVE")
                 .build();
 
-        when(courseService.findAll(any())).thenReturn(new PageImpl<>(Arrays.asList(response)));
+        when(courseService.search(any(), any(), any(), any())).thenReturn(new PageImpl<>(Arrays.asList(response)));
 
         mockMvc.perform(get("/api/v1/courses"))
                 .andExpect(status().isOk())
@@ -68,7 +68,7 @@ class CourseControllerTest {
                 new PageImpl<>(Arrays.asList(r1, r2),
                         org.springframework.data.domain.PageRequest.of(0, 20), 2);
 
-        when(courseService.findAll(any())).thenReturn(page);
+        when(courseService.search(any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/courses")
                         .param("page", "0")
@@ -87,7 +87,7 @@ class CourseControllerTest {
                 new PageImpl<>(Arrays.asList(),
                         org.springframework.data.domain.PageRequest.of(0, 20), 0);
 
-        when(courseService.findAll(any())).thenReturn(emptyPage);
+        when(courseService.search(any(), any(), any(), any())).thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/v1/courses"))
                 .andExpect(status().isOk())

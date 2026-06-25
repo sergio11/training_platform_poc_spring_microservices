@@ -2,6 +2,7 @@ package com.poc.training.catalog.controller;
 
 import com.poc.training.catalog.dto.CourseRequest;
 import com.poc.training.catalog.dto.CourseResponse;
+import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.service.CourseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,13 @@ public class CourseController {
     @GetMapping
     @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
     public ResponseEntity<Page<CourseResponse>> getAllCourses(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String instructor,
+            @RequestParam(required = false) CourseStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
-        return ResponseEntity.ok(courseService.findAll(PageRequest.of(page, size, Sort.by(sortBy))));
+        return ResponseEntity.ok(courseService.search(title, instructor, status, PageRequest.of(page, size, Sort.by(sortBy))));
     }
 
     @GetMapping("/{id}")

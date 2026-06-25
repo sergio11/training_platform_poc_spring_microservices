@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -48,15 +49,4 @@ public class SecurityConfig {
         return converter;
     }
 
-    public static Long extractEmployeeId(org.springframework.security.oauth2.jwt.Jwt jwt) {
-        List<String> employeeIds = jwt.getClaimAsStringList("employeeId");
-        if (employeeIds != null && !employeeIds.isEmpty()) {
-            try {
-                return Long.parseLong(employeeIds.get(0));
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
-    }
 }

@@ -1,18 +1,21 @@
 package com.poc.training.certification.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poc.training.certification.dto.CertificateResponse;
 import com.poc.training.certification.model.Certificate;
+import com.poc.training.certification.model.OutboxEvent;
 import com.poc.training.certification.repository.CertificateRepository;
-import com.poc.training.shared.event.CertificateGeneratedEvent;
+import com.poc.training.certification.repository.OutboxEventRepository;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -33,7 +36,13 @@ class CertificationServiceTest {
     private CertificateRepository certificateRepository;
 
     @Mock
-    private RabbitTemplate rabbitTemplate;
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @Captor
+    private ArgumentCaptor<OutboxEvent> outboxEventCaptor;
 
     @InjectMocks
     private CertificationService certificationService;
@@ -80,7 +89,7 @@ class CertificationServiceTest {
     }
 
     @Test
-    void shouldGenerateCertificateOnCourseCompleted() {
+    void shouldGenerateCertificateOnCourseCompleted() throws Exception {
         CourseCompletedEvent event = CourseCompletedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -97,10 +106,12 @@ class CertificationServiceTest {
             c.setCertificateNumber("CERT-TEST-12345");
             return c;
         });
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
         certificationService.handleCourseCompleted(event);
 
         verify(certificateRepository).save(any(Certificate.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -123,7 +134,7 @@ class CertificationServiceTest {
     }
 
     @Test
-    void shouldRetryOnCertificateNumberCollision() {
+    void shouldRetryOnCertificateNumberCollision() throws Exception {
         CourseCompletedEvent event = CourseCompletedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -142,10 +153,12 @@ class CertificationServiceTest {
                     c.setCertificateNumber("CERT-RETRY-12345");
                     return c;
                 });
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
         certificationService.handleCourseCompleted(event);
 
         verify(certificateRepository, times(2)).save(any(Certificate.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -165,5 +178,6 @@ class CertificationServiceTest {
 
         assertThrows(BusinessException.class, () -> certificationService.handleCourseCompleted(event));
         verify(certificateRepository, times(3)).save(any(Certificate.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
 }

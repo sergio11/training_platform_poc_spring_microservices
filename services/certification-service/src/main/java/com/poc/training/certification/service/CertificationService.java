@@ -1,8 +1,12 @@
 package com.poc.training.certification.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poc.training.certification.dto.CertificateResponse;
 import com.poc.training.certification.model.Certificate;
+import com.poc.training.certification.model.OutboxEvent;
 import com.poc.training.certification.repository.CertificateRepository;
+import com.poc.training.certification.repository.OutboxEventRepository;
 import com.poc.training.shared.event.CertificateGeneratedEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.RabbitMQConstants;
@@ -11,14 +15,11 @@ import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -29,7 +30,8 @@ import java.util.UUID;
 public class CertificationService {
 
     private final CertificateRepository certificateRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     public static CertificateResponse toResponse(Certificate certificate) {
         return CertificateResponse.builder()
@@ -73,40 +75,30 @@ public class CertificationService {
 
         Certificate saved = generateCertificate(event);
 
-        CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("certification-service")
-                .certificateId(saved.getId())
-                .enrollmentId(saved.getEnrollmentId())
-                .employeeId(saved.getEmployeeId())
-                .courseId(saved.getCourseId())
-                .certificateNumber(saved.getCertificateNumber())
-                .build();
+        try {
+            CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .timestamp(LocalDateTime.now())
+                    .source("certification-service")
+                    .certificateId(saved.getId())
+                    .enrollmentId(saved.getEnrollmentId())
+                    .employeeId(saved.getEmployeeId())
+                    .courseId(saved.getCourseId())
+                    .certificateNumber(saved.getCertificateNumber())
+                    .build();
 
-        sendAfterCommit(() -> {
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConstants.EXCHANGE,
-                    RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED,
-                    certificateEvent);
-            log.info("Published CertificateGeneratedEvent for certificate: {}", saved.getId());
-        });
-    }
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Certificate")
+                    .aggregateId(String.valueOf(saved.getId()))
+                    .eventType("CertificateGeneratedEvent")
+                    .payload(objectMapper.writeValueAsString(certificateEvent))
+                    .routingKey(RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED)
+                    .build();
 
-    private void sendAfterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        action.run();
-                    } catch (Exception e) {
-                        log.error("Failed to execute after commit action: {}", e.getMessage());
-                    }
-                }
-            });
-        } else {
-            action.run();
+            outboxEventRepository.save(outboxEvent);
+            log.info("Persisted CertificateGeneratedEvent to outbox for certificate: {}", saved.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize CertificateGeneratedEvent: {}", e.getMessage());
         }
     }
 

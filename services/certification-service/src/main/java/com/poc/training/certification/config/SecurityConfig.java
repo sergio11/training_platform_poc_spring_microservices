@@ -49,25 +49,4 @@ public class SecurityConfig {
         return converter;
     }
 
-    public static boolean isEmployeeOnly(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return false;
-        }
-        @SuppressWarnings("unchecked")
-        List<String> roles = (List<String>) realmAccess.get("roles");
-        return roles.contains("employee") && !roles.contains("admin") && !roles.contains("instructor");
-    }
-
-    public static Long extractEmployeeId(Jwt jwt) {
-        List<String> employeeIds = jwt.getClaimAsStringList("employeeId");
-        if (employeeIds != null && !employeeIds.isEmpty()) {
-            try {
-                return Long.parseLong(employeeIds.get(0));
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
-    }
 }

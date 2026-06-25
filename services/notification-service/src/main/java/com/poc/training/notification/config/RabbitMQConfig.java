@@ -16,23 +16,40 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable("notification.dlq").build();
+    }
+
+    @Bean
     public Queue enrollmentCreatedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_CREATED).build();
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_CREATED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
     }
 
     @Bean
     public Queue enrollmentApprovedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_APPROVED).build();
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_APPROVED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
     }
 
     @Bean
     public Queue courseCompletedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_COURSE_COMPLETED).build();
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_COURSE_COMPLETED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
     }
 
     @Bean
     public Queue certificateGeneratedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_CERTIFICATE_GENERATED).build();
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_CERTIFICATE_GENERATED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
     }
 
     @Bean
@@ -53,6 +70,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding certificateGeneratedBinding(Queue certificateGeneratedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(certificateGeneratedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED);
+    }
+
+    @Bean
+    public Binding deadLetterBinding(Queue deadLetterQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(deadLetterQueue).to(trainingExchange).with("notification.dlq");
     }
 
     @Bean

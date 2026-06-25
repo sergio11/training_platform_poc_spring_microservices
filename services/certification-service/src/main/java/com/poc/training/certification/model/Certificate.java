@@ -7,7 +7,10 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "certificates")
-@Data
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,6 +18,7 @@ public class Certificate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false, unique = true)
@@ -41,6 +45,6 @@ public class Certificate {
     }
 
     private String generateCertificateNumber() {
-        return "CERT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "CERT-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 }

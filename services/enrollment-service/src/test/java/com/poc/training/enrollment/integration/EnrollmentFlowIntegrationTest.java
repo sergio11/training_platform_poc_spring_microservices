@@ -109,10 +109,10 @@ class EnrollmentFlowIntegrationTest {
 
         enrollmentRepository.save(enrollment);
 
-        boolean exists = enrollmentRepository.existsByEmployeeIdAndCourseIdAndStatusIn(
+        var existing = enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(
                 1L, 1L, List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED));
 
-        assertTrue(exists);
+        assertFalse(existing.isEmpty());
     }
 
     @Test
