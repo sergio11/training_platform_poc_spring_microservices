@@ -33,6 +33,15 @@ public class CourseController {
         return ResponseEntity.ok(courseService.search(title, instructor, status, PageRequest.of(page, size, Sort.by(sortBy))));
     }
 
+    @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
+    public ResponseEntity<Page<CourseResponse>> getActiveCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy) {
+        return ResponseEntity.ok(courseService.findActiveCourses(PageRequest.of(page, size, Sort.by(sortBy))));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
     public ResponseEntity<CourseResponse> getCourseById(@PathVariable Long id) {
@@ -62,6 +71,13 @@ public class CourseController {
     @PreAuthorize("hasAnyRole('instructor', 'admin')")
     public ResponseEntity<Void> incrementEnrolledCount(@PathVariable Long id) {
         courseService.incrementEnrolledCount(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/unenroll")
+    @PreAuthorize("hasAnyRole('instructor', 'admin')")
+    public ResponseEntity<Void> decrementEnrolledCount(@PathVariable Long id) {
+        courseService.decrementEnrolledCount(id);
         return ResponseEntity.ok().build();
     }
 

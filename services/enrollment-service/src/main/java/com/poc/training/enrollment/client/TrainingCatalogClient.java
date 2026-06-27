@@ -58,4 +58,20 @@ public class TrainingCatalogClient {
         log.error("Fallback called for incrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
         throw new RuntimeException("Failed to increment enrolled count for course: " + courseId, throwable);
     }
+
+    @CircuitBreaker(name = "catalogService", fallbackMethod = "decrementEnrolledCountFallback")
+    @Retry(name = "catalogService")
+    public void decrementEnrolledCount(Long courseId) {
+        log.info("Decrementing enrolled count for course: {}", courseId);
+        webClient.post()
+                .uri("/api/v1/courses/{id}/unenroll", courseId)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block(Duration.ofSeconds(5));
+    }
+
+    public void decrementEnrolledCountFallback(Long courseId, Throwable throwable) {
+        log.error("Fallback called for decrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
+        throw new RuntimeException("Failed to decrement enrolled count for course: " + courseId, throwable);
+    }
 }

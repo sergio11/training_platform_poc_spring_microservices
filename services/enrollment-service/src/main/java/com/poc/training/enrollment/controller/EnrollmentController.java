@@ -76,4 +76,15 @@ public class EnrollmentController {
     public ResponseEntity<EnrollmentResponse> rejectEnrollment(@PathVariable Long id) {
         return ResponseEntity.ok(enrollmentService.reject(id));
     }
+
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
+    public ResponseEntity<EnrollmentResponse> cancelEnrollment(@PathVariable Long id) {
+        EnrollmentResponse enrollment = enrollmentService.findById(id);
+        Jwt jwt = JwtUtils.getJwtFromContext();
+        if (JwtUtils.isEmployeeOnly(jwt) && !enrollment.getEmployeeId().equals(JwtUtils.extractEmployeeIdAsLong(jwt))) {
+            throw new AccessDeniedException("Employees can only cancel their own enrollments");
+        }
+        return ResponseEntity.ok(enrollmentService.cancel(id));
+    }
 }

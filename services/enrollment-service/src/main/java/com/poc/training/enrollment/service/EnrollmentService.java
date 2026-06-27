@@ -1,11 +1,15 @@
 package com.poc.training.enrollment.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poc.training.shared.dto.CourseDTO;
 import com.poc.training.enrollment.client.TrainingCatalogClient;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.model.Enrollment;
 import com.poc.training.enrollment.model.EnrollmentStatus;
+import com.poc.training.enrollment.model.OutboxEvent;
 import com.poc.training.enrollment.repository.EnrollmentRepository;
+import com.poc.training.enrollment.repository.OutboxEventRepository;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.EnrollmentApprovedEvent;
 import com.poc.training.shared.event.EnrollmentCreatedEvent;
@@ -15,13 +19,10 @@ import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,7 +35,8 @@ public class EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final TrainingCatalogClient trainingCatalogClient;
-    private final RabbitTemplate rabbitTemplate;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     public static EnrollmentResponse toResponse(Enrollment enrollment) {
         return EnrollmentResponse.builder()
@@ -94,11 +96,9 @@ public class EnrollmentService {
                 .courseId(courseId)
                 .build();
 
-        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
-                RabbitMQConstants.EXCHANGE,
-                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED,
-                event));
-        log.info("Published EnrollmentCreatedEvent for enrollment: {}", saved.getId());
+        persistOutboxEvent("Enrollment", String.valueOf(saved.getId()), "EnrollmentCreatedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED);
+        log.info("Persisted EnrollmentCreatedEvent to outbox for enrollment: {}", saved.getId());
 
         return toResponse(saved);
     }
@@ -132,11 +132,9 @@ public class EnrollmentService {
                 .courseId(saved.getCourseId())
                 .build();
 
-        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
-                RabbitMQConstants.EXCHANGE,
-                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED,
-                event));
-        log.info("Published EnrollmentApprovedEvent for enrollment: {}", saved.getId());
+        persistOutboxEvent("Enrollment", String.valueOf(saved.getId()), "EnrollmentApprovedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_APPROVED);
+        log.info("Persisted EnrollmentApprovedEvent to outbox for enrollment: {}", saved.getId());
 
         return toResponse(saved);
     }
@@ -167,11 +165,9 @@ public class EnrollmentService {
                 .courseId(saved.getCourseId())
                 .build();
 
-        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
-                RabbitMQConstants.EXCHANGE,
-                RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED,
-                event));
-        log.info("Published CourseCompletedEvent for enrollment: {}", saved.getId());
+        persistOutboxEvent("Enrollment", String.valueOf(saved.getId()), "CourseCompletedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED);
+        log.info("Persisted CourseCompletedEvent to outbox for enrollment: {}", saved.getId());
 
         return toResponse(saved);
     }
@@ -201,29 +197,53 @@ public class EnrollmentService {
                 .courseId(saved.getCourseId())
                 .build();
 
-        sendAfterCommit(() -> rabbitTemplate.convertAndSend(
-                RabbitMQConstants.EXCHANGE,
-                RabbitMQConstants.ROUTING_KEY_ENROLLMENT_REJECTED,
-                event));
-        log.info("Published EnrollmentRejectedEvent for enrollment: {}", saved.getId());
+        persistOutboxEvent("Enrollment", String.valueOf(saved.getId()), "EnrollmentRejectedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_REJECTED);
+        log.info("Persisted EnrollmentRejectedEvent to outbox for enrollment: {}", saved.getId());
 
         return toResponse(saved);
     }
 
-    private void sendAfterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        action.run();
-                    } catch (Exception e) {
-                        log.error("Failed to execute after commit action: {}", e.getMessage());
-                    }
-                }
-            });
-        } else {
-            action.run();
+    @Transactional
+    public EnrollmentResponse cancel(Long enrollmentId) {
+        log.info("Cancelling enrollment: {}", enrollmentId);
+
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
+
+        if (enrollment.getStatus() != EnrollmentStatus.PENDING && enrollment.getStatus() != EnrollmentStatus.APPROVED) {
+            throw new BusinessException(
+                "Cannot cancel enrollment in status: " + enrollment.getStatus() + ". Expected: PENDING or APPROVED"
+            );
+        }
+
+        if (enrollment.getStatus() == EnrollmentStatus.APPROVED) {
+            trainingCatalogClient.decrementEnrolledCount(enrollment.getCourseId());
+        }
+
+        enrollment.setStatus(EnrollmentStatus.CANCELLED);
+        Enrollment saved = enrollmentRepository.save(enrollment);
+
+        log.info("Cancelled enrollment: {}", saved.getId());
+
+        return toResponse(saved);
+    }
+
+    private void persistOutboxEvent(String aggregateType, String aggregateId, String eventType,
+                                    Object event, String routingKey) {
+        try {
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType(aggregateType)
+                    .aggregateId(aggregateId)
+                    .eventType(eventType)
+                    .payload(objectMapper.writeValueAsString(event))
+                    .routingKey(routingKey)
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize {} for outbox: {}", eventType, e.getMessage());
+            throw new RuntimeException("Failed to persist outbox event", e);
         }
     }
+
 }

@@ -44,6 +44,12 @@
       "vhost": "/",
       "durable": true,
       "auto_delete": false
+    },
+    {
+      "name": "notification.sent",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
     }
   ],
   "bindings": [
@@ -93,6 +99,14 @@
       "destination": "notification.dlq",
       "destination_type": "queue",
       "routing_key": "notification.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.sent",
+      "destination_type": "queue",
+      "routing_key": "notification.sent",
       "arguments": {}
     }
   ]

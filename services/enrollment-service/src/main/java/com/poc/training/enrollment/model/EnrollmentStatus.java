@@ -4,5 +4,6 @@ public enum EnrollmentStatus {
     PENDING,
     APPROVED,
     COMPLETED,
-    REJECTED
+    REJECTED,
+    CANCELLED
 }

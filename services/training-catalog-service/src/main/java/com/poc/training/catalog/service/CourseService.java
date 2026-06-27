@@ -132,4 +132,12 @@ public class CourseService {
             throw new BusinessException("No available seats for course: " + courseId);
         }
     }
+
+    @Transactional
+    public void decrementEnrolledCount(Long courseId) {
+        int updated = courseRepository.decrementEnrolledCount(courseId);
+        if (updated == 0) {
+            throw new BusinessException("Cannot decrement enrolled count for course: " + courseId + ". Count is already 0.");
+        }
+    }
 }

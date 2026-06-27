@@ -6,17 +6,22 @@ import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.model.Enrollment;
 import com.poc.training.enrollment.model.EnrollmentStatus;
 import com.poc.training.enrollment.repository.EnrollmentRepository;
+import com.poc.training.enrollment.model.OutboxEvent;
+import com.poc.training.enrollment.repository.OutboxEventRepository;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.EnrollmentApprovedEvent;
 import com.poc.training.shared.event.EnrollmentCreatedEvent;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import static org.mockito.Mockito.lenient;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
@@ -39,10 +44,22 @@ class EnrollmentServiceTest {
     private TrainingCatalogClient trainingCatalogClient;
 
     @Mock
-    private RabbitTemplate rabbitTemplate;
+    private OutboxEventRepository outboxEventRepository;
 
-    @InjectMocks
+    @Mock
+    private ObjectMapper objectMapper;
+
     private EnrollmentService enrollmentService;
+
+    @BeforeEach
+    void setUp() {
+        try {
+            lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        enrollmentService = new EnrollmentService(enrollmentRepository, trainingCatalogClient, outboxEventRepository, objectMapper);
+    }
 
     @Test
     void shouldFindEnrollmentsByEmployeeId() {
@@ -85,6 +102,7 @@ class EnrollmentServiceTest {
         assertNotNull(result);
         assertEquals(EnrollmentStatus.PENDING.name(), result.getStatus());
         verify(enrollmentRepository).save(any(Enrollment.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -114,6 +132,7 @@ class EnrollmentServiceTest {
         EnrollmentResponse result = enrollmentService.approve(1L);
         assertEquals(EnrollmentStatus.APPROVED.name(), result.getStatus());
         verify(enrollmentRepository).save(any(Enrollment.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -143,6 +162,7 @@ class EnrollmentServiceTest {
         assertEquals(EnrollmentStatus.COMPLETED.name(), result.getStatus());
         assertNotNull(result.getCompletedAt());
         verify(enrollmentRepository).save(any(Enrollment.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test

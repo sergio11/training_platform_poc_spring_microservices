@@ -1,16 +1,22 @@
 package com.poc.training.notification.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
+import com.poc.training.notification.model.OutboxEvent;
+import com.poc.training.notification.model.ProcessedEvent;
 import com.poc.training.notification.repository.NotificationRepository;
+import com.poc.training.notification.repository.OutboxEventRepository;
+import com.poc.training.notification.repository.ProcessedEventRepository;
 import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
 import com.poc.training.shared.exception.ResourceNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -34,8 +40,26 @@ class NotificationServiceTest {
     @Mock
     private NotificationSender notificationSender;
 
-    @InjectMocks
+    @Mock
+    private ProcessedEventRepository processedEventRepository;
+
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
     private NotificationService notificationService;
+
+    @BeforeEach
+    void setUp() {
+        try {
+            lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        notificationService = new NotificationService(notificationRepository, notificationSender, processedEventRepository, outboxEventRepository, objectMapper);
+    }
 
     @Test
     void shouldFindNotificationsByRecipientId() {
@@ -74,13 +98,13 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
         when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
             return n;
         });
-
         notificationService.handleEnrollmentCreated(event);
 
         verify(notificationSender).send(any(Notification.class));
@@ -88,6 +112,7 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.ENROLLMENT_CREATED &&
                 n.getRecipientId().equals("1")
         ));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -101,13 +126,13 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
         when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
             return n;
         });
-
         notificationService.handleEnrollmentApproved(event);
 
         verify(notificationSender).send(any(Notification.class));
@@ -115,6 +140,7 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.ENROLLMENT_APPROVED &&
                 n.getRecipientId().equals("1")
         ));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -130,13 +156,13 @@ class NotificationServiceTest {
                 .certificateNumber("CERT-12345")
                 .build();
 
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
         when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
             return n;
         });
-
         notificationService.handleCertificateGenerated(event);
 
         verify(notificationSender).send(any(Notification.class));
@@ -144,6 +170,7 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.CERTIFICATE_GENERATED &&
                 n.getRecipientId().equals("1")
         ));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -157,6 +184,7 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
         when(notificationSender.send(any(Notification.class))).thenReturn(false);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
@@ -182,6 +210,7 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
         when(notificationSender.send(any(Notification.class))).thenThrow(new RuntimeException("Send failed"));
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
@@ -207,13 +236,13 @@ class NotificationServiceTest {
                 .courseId(1L)
                 .build();
 
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
         when(notificationSender.send(any(Notification.class))).thenReturn(true);
         when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
             Notification n = inv.getArgument(0);
             n.setId(1L);
             return n;
         });
-
         notificationService.handleCourseCompleted(event);
 
         verify(notificationSender).send(any(Notification.class));
@@ -221,5 +250,6 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.COURSE_COMPLETED &&
                 n.getRecipientId().equals("1")
         ));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 }

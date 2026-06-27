@@ -16,6 +16,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue notificationSentQueue() {
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_NOTIFICATION_SENT)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
     public Queue deadLetterQueue() {
         return QueueBuilder.durable("notification.dlq").build();
     }
@@ -53,6 +61,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue enrollmentRejectedQueue() {
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_REJECTED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
     public Binding enrollmentCreatedBinding(Queue enrollmentCreatedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(enrollmentCreatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED);
     }
@@ -70,6 +86,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding certificateGeneratedBinding(Queue certificateGeneratedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(certificateGeneratedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED);
+    }
+
+    @Bean
+    public Binding enrollmentRejectedBinding(Queue enrollmentRejectedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(enrollmentRejectedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_REJECTED);
+    }
+
+    @Bean
+    public Binding notificationSentBinding(Queue notificationSentQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(notificationSentQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT);
     }
 
     @Bean

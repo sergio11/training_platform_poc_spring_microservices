@@ -6,6 +6,10 @@ spring:
       server:
         native:
           search-locations: classpath:/configs
+  security:
+    user:
+      name: ${CONFIG_SERVER_USER:config-client}
+      password: ${CONFIG_SERVER_PASSWORD:config-secret}
 
 server:
   port: ${SERVER_PORT:9999}

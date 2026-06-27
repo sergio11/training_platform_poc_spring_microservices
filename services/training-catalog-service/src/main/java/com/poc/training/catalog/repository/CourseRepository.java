@@ -22,4 +22,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     @Modifying
     @Query("UPDATE Course c SET c.enrolledCount = c.enrolledCount + 1 WHERE c.id = :courseId AND c.enrolledCount < c.capacity AND c.status = 'ACTIVE'")
     int incrementEnrolledCountIfAvailable(@Param("courseId") Long courseId);
+
+    @Modifying
+    @Query("UPDATE Course c SET c.enrolledCount = c.enrolledCount - 1 WHERE c.id = :courseId AND c.enrolledCount > 0")
+    int decrementEnrolledCount(@Param("courseId") Long courseId);
 }
