@@ -63,17 +63,17 @@ class NotificationServiceTest {
 
     @Test
     void shouldFindNotificationsByRecipientId() {
-        Notification n1 = Notification.builder().id(1L).recipientId("1").type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
-        Notification n2 = Notification.builder().id(2L).recipientId("1").type(NotificationType.CERTIFICATE_GENERATED).status(NotificationStatus.SENT).build();
-        when(notificationRepository.findByRecipientId(eq("1"), any(PageRequest.class))).thenReturn(new PageImpl<>(Arrays.asList(n1, n2)));
+        Notification n1 = Notification.builder().id(1L).recipientId(1L).type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
+        Notification n2 = Notification.builder().id(2L).recipientId(1L).type(NotificationType.CERTIFICATE_GENERATED).status(NotificationStatus.SENT).build();
+        when(notificationRepository.findByRecipientId(eq(1L), any(PageRequest.class))).thenReturn(new PageImpl<>(Arrays.asList(n1, n2)));
 
-        var result = notificationService.findByRecipientId("1", PageRequest.of(0, 10));
+        var result = notificationService.findByRecipientId(1L, PageRequest.of(0, 10));
         assertEquals(2, result.getContent().size());
     }
 
     @Test
     void shouldFindNotificationById() {
-        Notification n = Notification.builder().id(1L).recipientId("1").message("Test").type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
+        Notification n = Notification.builder().id(1L).recipientId(1L).message("Test").type(NotificationType.ENROLLMENT_CREATED).status(NotificationStatus.SENT).build();
         when(notificationRepository.findById(1L)).thenReturn(Optional.of(n));
 
         NotificationResponse result = notificationService.findById(1L);
@@ -110,7 +110,7 @@ class NotificationServiceTest {
         verify(notificationSender).send(any(Notification.class));
         verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.ENROLLMENT_CREATED &&
-                n.getRecipientId().equals("1")
+                n.getRecipientId().equals(1L)
         ));
         verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
@@ -138,7 +138,7 @@ class NotificationServiceTest {
         verify(notificationSender).send(any(Notification.class));
         verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.ENROLLMENT_APPROVED &&
-                n.getRecipientId().equals("1")
+                n.getRecipientId().equals(1L)
         ));
         verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
@@ -168,7 +168,7 @@ class NotificationServiceTest {
         verify(notificationSender).send(any(Notification.class));
         verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.CERTIFICATE_GENERATED &&
-                n.getRecipientId().equals("1")
+                n.getRecipientId().equals(1L)
         ));
         verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
@@ -248,7 +248,7 @@ class NotificationServiceTest {
         verify(notificationSender).send(any(Notification.class));
         verify(notificationRepository, times(2)).save(argThat(n ->
                 n.getType() == NotificationType.COURSE_COMPLETED &&
-                n.getRecipientId().equals("1")
+                n.getRecipientId().equals(1L)
         ));
         verify(outboxEventRepository).save(any(OutboxEvent.class));
     }

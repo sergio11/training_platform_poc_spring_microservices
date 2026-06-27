@@ -10,7 +10,7 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 public class NotificationSentEvent extends BaseEvent {
     private Long notificationId;
-    private String recipientId;
+    private Long recipientId;
     private String notificationType;
     private String referenceId;
     private String referenceType;

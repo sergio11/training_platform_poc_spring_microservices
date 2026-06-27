@@ -59,7 +59,7 @@ class SecurityIntegrationTest {
     @Test
     void endpointById_shouldReturn200WithEmployeeRole() throws Exception {
         NotificationResponse response = NotificationResponse.builder()
-                .id(1L).type("ENROLLMENT_CREATED").recipientId("1")
+                .id(1L).type("ENROLLMENT_CREATED").recipientId(1L)
                 .message("Test").referenceId("1").referenceType("ENROLLMENT")
                 .sentAt(LocalDateTime.now()).status("SENT").build();
         when(notificationService.findById(any())).thenReturn(response);

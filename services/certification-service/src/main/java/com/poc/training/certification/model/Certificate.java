@@ -45,6 +45,8 @@ public class Certificate {
     }
 
     private String generateCertificateNumber() {
-        return "CERT-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        String ts = Long.toHexString(System.currentTimeMillis()).toUpperCase();
+        String rand = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "CERT-" + ts + "-" + rand;
     }
 }

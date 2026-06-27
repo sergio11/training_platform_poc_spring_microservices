@@ -110,7 +110,7 @@ class SecurityIntegrationTest {
 
     @Test
     void enrollEndpoint_shouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(post("/api/v1/courses/1/enroll"))
+        mockMvc.perform(patch("/api/v1/courses/1/enroll"))
                 .andExpect(result -> {
                     int status = result.getResponse().getStatus();
                     org.junit.jupiter.api.Assertions.assertTrue(
@@ -121,21 +121,21 @@ class SecurityIntegrationTest {
 
     @Test
     void enrollEndpoint_shouldReturn200WithAdminRole() throws Exception {
-        mockMvc.perform(post("/api/v1/courses/1/enroll")
+        mockMvc.perform(patch("/api/v1/courses/1/enroll")
                         .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     void enrollEndpoint_shouldReturn200WithInstructorRole() throws Exception {
-        mockMvc.perform(post("/api/v1/courses/1/enroll")
+        mockMvc.perform(patch("/api/v1/courses/1/enroll")
                         .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_instructor"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     void enrollEndpoint_shouldReturn403WithEmployeeRole() throws Exception {
-        mockMvc.perform(post("/api/v1/courses/1/enroll")
+        mockMvc.perform(patch("/api/v1/courses/1/enroll")
                         .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isForbidden());
     }

@@ -201,7 +201,7 @@ class CourseControllerTest {
 
     @Test
     void shouldEnrollInCourse() throws Exception {
-        mockMvc.perform(post("/api/v1/courses/1/enroll"))
+        mockMvc.perform(patch("/api/v1/courses/1/enroll"))
                 .andExpect(status().isOk());
         verify(courseService).incrementEnrolledCount(1L);
     }
@@ -210,7 +210,7 @@ class CourseControllerTest {
     void shouldReturn500WhenNoSeatsAvailable() throws Exception {
         doThrow(new BusinessException("No available seats for course: 1"))
                 .when(courseService).incrementEnrolledCount(1L);
-        mockMvc.perform(post("/api/v1/courses/1/enroll"))
+        mockMvc.perform(patch("/api/v1/courses/1/enroll"))
                 .andExpect(status().isBadRequest());
     }
 }

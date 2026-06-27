@@ -23,12 +23,12 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
     public ResponseEntity<Page<NotificationResponse>> getNotificationsByRecipientId(
-            @RequestParam String recipientId,
+            @RequestParam Long recipientId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
         Jwt jwt = JwtUtils.getJwtFromContext();
-        if (JwtUtils.isEmployeeOnly(jwt) && !recipientId.equals(JwtUtils.extractEmployeeIdAsString(jwt))) {
+        if (JwtUtils.isEmployeeOnly(jwt) && !recipientId.equals(JwtUtils.extractEmployeeIdAsLong(jwt))) {
             throw new AccessDeniedException("Employees can only view their own notifications");
         }
         return ResponseEntity.ok(notificationService.findByRecipientId(recipientId, PageRequest.of(page, size, Sort.by(sortBy))));
@@ -39,7 +39,7 @@ public class NotificationController {
     public ResponseEntity<NotificationResponse> getNotificationById(@PathVariable Long id) {
         NotificationResponse notification = notificationService.findById(id);
         Jwt jwt = JwtUtils.getJwtFromContext();
-        if (JwtUtils.isEmployeeOnly(jwt) && !notification.getRecipientId().equals(JwtUtils.extractEmployeeIdAsString(jwt))) {
+        if (JwtUtils.isEmployeeOnly(jwt) && !notification.getRecipientId().equals(JwtUtils.extractEmployeeIdAsLong(jwt))) {
             throw new AccessDeniedException("Employees can only view their own notifications");
         }
         return ResponseEntity.ok(notification);

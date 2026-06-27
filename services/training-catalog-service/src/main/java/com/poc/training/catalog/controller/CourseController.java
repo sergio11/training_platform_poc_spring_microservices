@@ -67,14 +67,14 @@ public class CourseController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/enroll")
+    @PatchMapping("/{id}/enroll")
     @PreAuthorize("hasAnyRole('instructor', 'admin')")
     public ResponseEntity<Void> incrementEnrolledCount(@PathVariable Long id) {
         courseService.incrementEnrolledCount(id);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/unenroll")
+    @PatchMapping("/{id}/unenroll")
     @PreAuthorize("hasAnyRole('instructor', 'admin')")
     public ResponseEntity<Void> decrementEnrolledCount(@PathVariable Long id) {
         courseService.decrementEnrolledCount(id);

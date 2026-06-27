@@ -12,7 +12,7 @@ class NotificationTest {
     void shouldSetDefaultValuesOnPrePersist() {
         Notification notification = Notification.builder()
                 .type(NotificationType.ENROLLMENT_CREATED)
-                .recipientId("1")
+                .recipientId(1L)
                 .message("Test message")
                 .referenceId("1")
                 .referenceType("ENROLLMENT")
@@ -29,7 +29,7 @@ class NotificationTest {
         Notification notification = Notification.builder()
                 .id(1L)
                 .type(NotificationType.CERTIFICATE_GENERATED)
-                .recipientId("1")
+                .recipientId(1L)
                 .message("Certificate generated")
                 .referenceId("1")
                 .referenceType("CERTIFICATE")
@@ -39,7 +39,7 @@ class NotificationTest {
 
         assertEquals(1L, notification.getId());
         assertEquals(NotificationType.CERTIFICATE_GENERATED, notification.getType());
-        assertEquals("1", notification.getRecipientId());
+        assertEquals(1L, notification.getRecipientId());
         assertEquals("Certificate generated", notification.getMessage());
         assertEquals(NotificationStatus.SENT, notification.getStatus());
     }
@@ -52,7 +52,7 @@ class NotificationTest {
 
     @Test
     void shouldHaveAllArgsConstructor() {
-        Notification notification = new Notification(1L, NotificationType.ENROLLMENT_CREATED, "1", "Msg", "1", "ENROLLMENT", LocalDateTime.now(), NotificationStatus.SENT);
+        Notification notification = new Notification(1L, NotificationType.ENROLLMENT_CREATED, 1L, "Msg", "1", "ENROLLMENT", LocalDateTime.now(), NotificationStatus.SENT);
         assertEquals(NotificationType.ENROLLMENT_CREATED, notification.getType());
     }
 }

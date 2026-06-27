@@ -52,7 +52,7 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> findByRecipientId(String recipientId, Pageable pageable) {
+    public Page<NotificationResponse> findByRecipientId(Long recipientId, Pageable pageable) {
         return notificationRepository.findByRecipientId(recipientId, pageable).map(NotificationService::toResponse);
     }
 
@@ -74,7 +74,7 @@ public class NotificationService {
 
         saveNotification(
                 NotificationType.ENROLLMENT_CREATED,
-                String.valueOf(event.getEmployeeId()),
+                event.getEmployeeId(),
                 message,
                 String.valueOf(event.getEnrollmentId()),
                 "ENROLLMENT",
@@ -93,7 +93,7 @@ public class NotificationService {
 
         saveNotification(
                 NotificationType.ENROLLMENT_APPROVED,
-                String.valueOf(event.getEmployeeId()),
+                event.getEmployeeId(),
                 message,
                 String.valueOf(event.getEnrollmentId()),
                 "ENROLLMENT",
@@ -112,7 +112,7 @@ public class NotificationService {
 
         saveNotification(
                 NotificationType.CERTIFICATE_GENERATED,
-                String.valueOf(event.getEmployeeId()),
+                event.getEmployeeId(),
                 message,
                 String.valueOf(event.getCertificateId()),
                 "CERTIFICATE",
@@ -131,7 +131,7 @@ public class NotificationService {
 
         saveNotification(
                 NotificationType.ENROLLMENT_REJECTED,
-                String.valueOf(event.getEmployeeId()),
+                event.getEmployeeId(),
                 message,
                 String.valueOf(event.getEnrollmentId()),
                 "ENROLLMENT",
@@ -150,7 +150,7 @@ public class NotificationService {
 
         saveNotification(
                 NotificationType.COURSE_COMPLETED,
-                String.valueOf(event.getEmployeeId()),
+                event.getEmployeeId(),
                 message,
                 String.valueOf(event.getEnrollmentId()),
                 "ENROLLMENT",
@@ -166,7 +166,7 @@ public class NotificationService {
         return false;
     }
 
-    private void saveNotification(NotificationType type, String recipientId, String message,
+    private void saveNotification(NotificationType type, Long recipientId, String message,
                                   String referenceId, String referenceType, String eventId) {
         try {
             ProcessedEvent processed = ProcessedEvent.builder()

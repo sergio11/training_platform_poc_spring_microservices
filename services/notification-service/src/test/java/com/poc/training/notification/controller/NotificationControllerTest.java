@@ -37,33 +37,33 @@ class NotificationControllerTest {
     void shouldReturnNotificationsByRecipientId() throws Exception {
         NotificationResponse response = NotificationResponse.builder()
                 .id(1L)
-                .recipientId("1")
+                .recipientId(1L)
                 .type("ENROLLMENT_CREATED")
                 .message("Test notification")
                 .status("SENT")
                 .sentAt(LocalDateTime.now())
                 .build();
 
-        when(notificationService.findByRecipientId(eq("1"), any()))
+        when(notificationService.findByRecipientId(eq(1L), any()))
                 .thenReturn(new PageImpl<>(Arrays.asList(response)));
 
         mockMvc.perform(get("/api/v1/notifications").param("recipientId", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].recipientId").value("1"));
+                .andExpect(jsonPath("$.content[0].recipientId").value(1));
     }
 
     @Test
     void shouldReturnPaginatedNotifications() throws Exception {
         NotificationResponse r1 = NotificationResponse.builder()
-                .id(1L).recipientId("1").type("ENROLLMENT_CREATED").message("M1").status("SENT").build();
+                .id(1L).recipientId(1L).type("ENROLLMENT_CREATED").message("M1").status("SENT").build();
         NotificationResponse r2 = NotificationResponse.builder()
-                .id(2L).recipientId("1").type("CERTIFICATE_GENERATED").message("M2").status("SENT").build();
+                .id(2L).recipientId(1L).type("CERTIFICATE_GENERATED").message("M2").status("SENT").build();
 
         org.springframework.data.domain.Page<NotificationResponse> page =
                 new PageImpl<>(Arrays.asList(r1, r2),
                         org.springframework.data.domain.PageRequest.of(0, 20), 2);
 
-        when(notificationService.findByRecipientId(eq("1"), any())).thenReturn(page);
+        when(notificationService.findByRecipientId(eq(1L), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/notifications")
                         .param("recipientId", "1")
@@ -83,7 +83,7 @@ class NotificationControllerTest {
                 new PageImpl<>(Arrays.asList(),
                         org.springframework.data.domain.PageRequest.of(0, 20), 0);
 
-        when(notificationService.findByRecipientId(eq("999"), any())).thenReturn(emptyPage);
+        when(notificationService.findByRecipientId(eq(999L), any())).thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/v1/notifications")
                         .param("recipientId", "999"))
@@ -98,7 +98,7 @@ class NotificationControllerTest {
     void shouldReturnNotificationById() throws Exception {
         NotificationResponse response = NotificationResponse.builder()
                 .id(1L)
-                .recipientId("1")
+                .recipientId(1L)
                 .type("ENROLLMENT_CREATED")
                 .message("Test notification")
                 .status("SENT")

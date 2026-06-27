@@ -57,7 +57,7 @@ class NotificationFlowIntegrationTest {
     void shouldStoreAndRetrieveNotification() {
         Notification notification = Notification.builder()
                 .type(NotificationType.ENROLLMENT_CREATED)
-                .recipientId("1")
+                .recipientId(1L)
                 .message("You have been enrolled in course 1")
                 .referenceId("1")
                 .referenceType("ENROLLMENT")
@@ -72,16 +72,16 @@ class NotificationFlowIntegrationTest {
     @Test
     void shouldFindNotificationsByRecipientId() {
         Notification n1 = notificationRepository.save(Notification.builder()
-                .type(NotificationType.ENROLLMENT_CREATED).recipientId("1")
+                .type(NotificationType.ENROLLMENT_CREATED).recipientId(1L)
                 .message("Enrolled").referenceId("1").referenceType("ENROLLMENT").build());
         Notification n2 = notificationRepository.save(Notification.builder()
-                .type(NotificationType.ENROLLMENT_APPROVED).recipientId("1")
+                .type(NotificationType.ENROLLMENT_APPROVED).recipientId(1L)
                 .message("Approved").referenceId("2").referenceType("ENROLLMENT").build());
         notificationRepository.save(Notification.builder()
-                .type(NotificationType.COURSE_COMPLETED).recipientId("2")
+                .type(NotificationType.COURSE_COMPLETED).recipientId(2L)
                 .message("Completed").referenceId("3").referenceType("ENROLLMENT").build());
 
-        Page<Notification> notifications = notificationRepository.findByRecipientId("1", PageRequest.of(0, 10));
+        Page<Notification> notifications = notificationRepository.findByRecipientId(1L, PageRequest.of(0, 10));
 
         assertEquals(2, notifications.getContent().size());
     }
@@ -89,10 +89,10 @@ class NotificationFlowIntegrationTest {
     @Test
     void shouldFindNotificationsByType() {
         notificationRepository.save(Notification.builder()
-                .type(NotificationType.ENROLLMENT_CREATED).recipientId("1")
+                .type(NotificationType.ENROLLMENT_CREATED).recipientId(1L)
                 .message("Enrolled").referenceId("1").referenceType("ENROLLMENT").build());
         notificationRepository.save(Notification.builder()
-                .type(NotificationType.ENROLLMENT_CREATED).recipientId("2")
+                .type(NotificationType.ENROLLMENT_CREATED).recipientId(2L)
                 .message("Enrolled").referenceId("2").referenceType("ENROLLMENT").build());
 
         List<Notification> notifications = notificationRepository.findByType(NotificationType.ENROLLMENT_CREATED);
@@ -121,7 +121,7 @@ class NotificationFlowIntegrationTest {
     void shouldStoreNotificationWithCorrectReference() {
         Notification notification = Notification.builder()
                 .type(NotificationType.CERTIFICATE_GENERATED)
-                .recipientId("1")
+                .recipientId(1L)
                 .message("Certificate generated for course 1")
                 .referenceId("1")
                 .referenceType("CERTIFICATE")

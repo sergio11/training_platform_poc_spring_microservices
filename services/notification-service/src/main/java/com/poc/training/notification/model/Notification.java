@@ -25,7 +25,7 @@ public class Notification {
     private NotificationType type;
 
     @Column(nullable = false)
-    private String recipientId;
+    private Long recipientId;
 
     @Column(nullable = false, length = 1000)
     private String message;
