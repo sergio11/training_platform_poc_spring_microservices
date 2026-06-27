@@ -3,6 +3,7 @@ package com.poc.training.enrollment.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.poc.training.shared.dto.CourseDTO;
+import com.poc.training.enrollment.client.EmployeeClient;
 import com.poc.training.enrollment.client.TrainingCatalogClient;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.model.Enrollment;
@@ -35,6 +36,7 @@ public class EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final TrainingCatalogClient trainingCatalogClient;
+    private final EmployeeClient employeeClient;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
@@ -64,6 +66,10 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentResponse enroll(Long employeeId, Long courseId) {
         log.info("Processing enrollment for employee {} in course {}", employeeId, courseId);
+
+        if (!employeeClient.existsById(employeeId)) {
+            throw new BusinessException("Employee not found with id: " + employeeId);
+        }
 
         CourseDTO course = trainingCatalogClient.getCourse(courseId);
 

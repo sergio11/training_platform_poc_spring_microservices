@@ -1,0 +1,108 @@
+package com.poc.training.employee.service;
+
+import com.poc.training.employee.dto.EmployeeRequest;
+import com.poc.training.employee.dto.EmployeeResponse;
+import com.poc.training.employee.model.Employee;
+import com.poc.training.employee.repository.EmployeeRepository;
+import com.poc.training.shared.exception.BusinessException;
+import com.poc.training.shared.exception.ResourceNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class EmployeeService {
+
+    private final EmployeeRepository employeeRepository;
+
+    public static EmployeeResponse toResponse(Employee employee) {
+        return EmployeeResponse.builder()
+                .id(employee.getId())
+                .employeeNumber(employee.getEmployeeNumber())
+                .fullName(employee.getFullName())
+                .email(employee.getEmail())
+                .department(employee.getDepartment())
+                .position(employee.getPosition())
+                .keycloakUserId(employee.getKeycloakUserId())
+                .active(employee.isActive())
+                .createdAt(employee.getCreatedAt())
+                .updatedAt(employee.getUpdatedAt())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponse> findAll(Pageable pageable) {
+        return employeeRepository.findByActiveTrue(pageable).map(EmployeeService::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public EmployeeResponse findById(Long id) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+        return toResponse(employee);
+    }
+
+    @Transactional(readOnly = true)
+    public EmployeeResponse findByEmployeeNumber(String employeeNumber) {
+        Employee employee = employeeRepository.findByEmployeeNumber(employeeNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with number: " + employeeNumber));
+        return toResponse(employee);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsById(Long id) {
+        return employeeRepository.existsById(id);
+    }
+
+    @Transactional
+    public EmployeeResponse create(EmployeeRequest request) {
+        if (employeeRepository.findByEmployeeNumber(request.getEmployeeNumber()).isPresent()) {
+            throw new BusinessException("Employee already exists with number: " + request.getEmployeeNumber());
+        }
+        if (employeeRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new BusinessException("Employee already exists with email: " + request.getEmail());
+        }
+
+        Employee employee = Employee.builder()
+                .employeeNumber(request.getEmployeeNumber())
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .department(request.getDepartment())
+                .position(request.getPosition())
+                .keycloakUserId(request.getKeycloakUserId())
+                .build();
+
+        Employee saved = employeeRepository.save(employee);
+        log.info("Created employee: {} ({})", saved.getFullName(), saved.getEmployeeNumber());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public EmployeeResponse update(Long id, EmployeeRequest request) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+
+        employee.setFullName(request.getFullName());
+        employee.setEmail(request.getEmail());
+        employee.setDepartment(request.getDepartment());
+        employee.setPosition(request.getPosition());
+
+        Employee saved = employeeRepository.save(employee);
+        log.info("Updated employee: {} ({})", saved.getFullName(), saved.getEmployeeNumber());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deactivate(Long id) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+        employee.setActive(false);
+        employeeRepository.save(employee);
+        log.info("Deactivated employee: {} ({})", employee.getFullName(), employee.getEmployeeNumber());
+    }
+}

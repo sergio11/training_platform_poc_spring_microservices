@@ -68,3 +68,5 @@ client:
     url: ${CATALOG_SERVICE_URL:http://localhost:8081}
     connect-timeout: ${CATALOG_CONNECT_TIMEOUT:3000}
     read-timeout: ${CATALOG_READ_TIMEOUT:5000}
+  employee:
+    url: ${EMPLOYEE_SERVICE_URL:http://localhost:8085}

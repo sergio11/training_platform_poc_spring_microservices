@@ -103,24 +103,18 @@ public class CertificationService {
     }
 
     private Certificate generateCertificate(CourseCompletedEvent event) {
-        int maxRetries = 3;
-        for (int i = 0; i < maxRetries; i++) {
-            try {
-                Certificate certificate = Certificate.builder()
-                        .enrollmentId(event.getEnrollmentId())
-                        .employeeId(event.getEmployeeId())
-                        .courseId(event.getCourseId())
-                        .build();
+        try {
+            Certificate certificate = Certificate.builder()
+                    .enrollmentId(event.getEnrollmentId())
+                    .employeeId(event.getEmployeeId())
+                    .courseId(event.getCourseId())
+                    .build();
 
-                return certificateRepository.save(certificate);
-            } catch (DataIntegrityViolationException e) {
-                log.warn("Certificate number collision on attempt {}/{} for enrollment: {}",
-                        i + 1, maxRetries, event.getEnrollmentId());
-                if (i == maxRetries - 1) {
-                    throw new BusinessException("Failed to generate unique certificate number after " + maxRetries + " attempts");
-                }
-            }
+            return certificateRepository.save(certificate);
+        } catch (DataIntegrityViolationException e) {
+            log.error("Data integrity violation generating certificate for enrollment {}: {}",
+                    event.getEnrollmentId(), e.getMessage());
+            throw e;
         }
-        throw new BusinessException("Failed to generate certificate for enrollment: " + event.getEnrollmentId());
     }
 }

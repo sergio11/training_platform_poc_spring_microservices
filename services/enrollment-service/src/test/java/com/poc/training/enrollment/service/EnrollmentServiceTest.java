@@ -1,6 +1,7 @@
 package com.poc.training.enrollment.service;
 
 import com.poc.training.shared.dto.CourseDTO;
+import com.poc.training.enrollment.client.EmployeeClient;
 import com.poc.training.enrollment.client.TrainingCatalogClient;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.model.Enrollment;
@@ -44,6 +45,9 @@ class EnrollmentServiceTest {
     private TrainingCatalogClient trainingCatalogClient;
 
     @Mock
+    private EmployeeClient employeeClient;
+
+    @Mock
     private OutboxEventRepository outboxEventRepository;
 
     @Mock
@@ -58,7 +62,7 @@ class EnrollmentServiceTest {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        enrollmentService = new EnrollmentService(enrollmentRepository, trainingCatalogClient, outboxEventRepository, objectMapper);
+        enrollmentService = new EnrollmentService(enrollmentRepository, trainingCatalogClient, employeeClient, outboxEventRepository, objectMapper);
     }
 
     @Test
@@ -89,6 +93,7 @@ class EnrollmentServiceTest {
 
     @Test
     void shouldEnrollEmployee() {
+        when(employeeClient.existsById(1L)).thenReturn(true);
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(0).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
         when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());
@@ -107,6 +112,7 @@ class EnrollmentServiceTest {
 
     @Test
     void shouldThrowExceptionWhenAlreadyEnrolled() {
+        when(employeeClient.existsById(1L)).thenReturn(true);
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(0).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
         when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of(Enrollment.builder().id(1L).build()));
@@ -116,6 +122,7 @@ class EnrollmentServiceTest {
 
     @Test
     void shouldThrowExceptionWhenNoSeats() {
+        when(employeeClient.existsById(1L)).thenReturn(true);
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(30).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
         when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());

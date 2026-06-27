@@ -134,7 +134,7 @@ class CertificationServiceTest {
     }
 
     @Test
-    void shouldRetryOnCertificateNumberCollision() throws Exception {
+    void shouldThrowOnDataIntegrityViolation() {
         CourseCompletedEvent event = CourseCompletedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -146,38 +146,12 @@ class CertificationServiceTest {
 
         when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
         when(certificateRepository.save(any(Certificate.class)))
-                .thenThrow(new DataIntegrityViolationException("Duplicate certificate number"))
-                .thenAnswer(inv -> {
-                    Certificate c = inv.getArgument(0);
-                    c.setId(1L);
-                    c.setCertificateNumber("CERT-RETRY-12345");
-                    return c;
-                });
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+                .thenThrow(new DataIntegrityViolationException("Detail: Key (enrollment_id)=(1) already exists."));
 
-        certificationService.handleCourseCompleted(event);
-
-        verify(certificateRepository, times(2)).save(any(Certificate.class));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
-    }
-
-    @Test
-    void shouldThrowAfterMaxRetriesOnCollision() {
-        CourseCompletedEvent event = CourseCompletedEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("enrollment-service")
-                .enrollmentId(1L)
-                .employeeId(1L)
-                .courseId(1L)
-                .build();
-
-        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
-        when(certificateRepository.save(any(Certificate.class)))
-                .thenThrow(new DataIntegrityViolationException("Duplicate certificate number"));
-
-        assertThrows(BusinessException.class, () -> certificationService.handleCourseCompleted(event));
-        verify(certificateRepository, times(3)).save(any(Certificate.class));
+        assertThrows(DataIntegrityViolationException.class, () ->
+            certificationService.handleCourseCompleted(event)
+        );
+        verify(certificateRepository, times(1)).save(any(Certificate.class));
         verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
 }

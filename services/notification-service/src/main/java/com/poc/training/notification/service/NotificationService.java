@@ -197,17 +197,14 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         log.info("Saved notification of type {} for recipient: {}", type, recipientId);
 
-        boolean sent = false;
         try {
-            sent = notificationSender.send(saved);
-            saved.setStatus(sent ? NotificationStatus.DELIVERED : NotificationStatus.FAILED);
-        } catch (Exception e) {
-            log.error("Failed to send notification {}: {}", saved.getId(), e.getMessage());
-            saved.setStatus(NotificationStatus.FAILED);
-        }
-        notificationRepository.save(saved);
+            boolean sent = notificationSender.send(saved);
+            if (!sent) {
+                throw new RuntimeException("Send returned false for notification " + saved.getId());
+            }
+            saved.setStatus(NotificationStatus.DELIVERED);
+            notificationRepository.save(saved);
 
-        if (sent) {
             NotificationSentEvent sentEvent = NotificationSentEvent.builder()
                     .eventId(UUID.randomUUID().toString())
                     .timestamp(LocalDateTime.now())
@@ -222,6 +219,9 @@ public class NotificationService {
             persistOutboxEvent("Notification", String.valueOf(saved.getId()), "NotificationSentEvent",
                     sentEvent, RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT);
             log.info("Persisted NotificationSentEvent to outbox for notification: {}", saved.getId());
+        } catch (Exception e) {
+            log.error("Failed to process notification {}: {}", saved.getId(), e.getMessage());
+            throw e;
         }
     }
 

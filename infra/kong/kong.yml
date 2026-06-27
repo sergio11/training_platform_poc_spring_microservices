@@ -23,6 +23,7 @@ consumers:
   - username: training-enrollment-client
   - username: training-certification-client
   - username: training-notification-client
+  - username: training-employee-client
 
 services:
   - name: training-catalog-service
@@ -94,6 +95,27 @@ services:
       - name: notification-routes
         paths:
           - /api/v1/notifications
+        strip_path: false
+    plugins:
+      - name: jwt
+        config:
+          uri_param_names: []
+          header_names:
+            - Authorization
+          claims_to_verify:
+            - exp
+          key_claim_name: iss
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+
+  - name: employee-service
+    url: http://training-employee-service:8085
+    routes:
+      - name: employee-routes
+        paths:
+          - /api/v1/employees
         strip_path: false
     plugins:
       - name: jwt

@@ -17,12 +17,25 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue courseCompletedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_COURSE_COMPLETED).build();
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_COURSE_COMPLETED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("certification.dlq")
+                .build();
+    }
+
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable("certification.dlq").build();
     }
 
     @Bean
     public Binding courseCompletedBinding(Queue courseCompletedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(courseCompletedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED);
+    }
+
+    @Bean
+    public Binding deadLetterBinding(Queue deadLetterQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(deadLetterQueue).to(trainingExchange).with("certification.dlq");
     }
 
     @Bean

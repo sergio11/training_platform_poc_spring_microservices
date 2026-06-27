@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: training-employee-service
+  namespace: training-platform
+  labels:
+    app: training-employee-service
+spec:
+  selector:
+    app: training-employee-service
+  ports:
+    - protocol: TCP
+      port: 8085
+      targetPort: 8085
+  type: ClusterIP

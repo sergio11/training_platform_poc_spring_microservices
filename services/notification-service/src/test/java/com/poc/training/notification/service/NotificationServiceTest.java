@@ -174,7 +174,7 @@ class NotificationServiceTest {
     }
 
     @Test
-    void shouldMarkNotificationAsFailedWhenSenderReturnsFalse() {
+    void shouldThrowWhenSenderReturnsFalse() {
         EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -192,15 +192,13 @@ class NotificationServiceTest {
             return n;
         });
 
-        notificationService.handleEnrollmentCreated(event);
-
-        verify(notificationRepository, times(2)).save(argThat(n ->
-                n.getStatus() == NotificationStatus.FAILED
-        ));
+        assertThrows(RuntimeException.class, () ->
+            notificationService.handleEnrollmentCreated(event)
+        );
     }
 
     @Test
-    void shouldMarkNotificationAsFailedWhenSenderThrowsException() {
+    void shouldThrowWhenSenderThrowsException() {
         EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -218,11 +216,9 @@ class NotificationServiceTest {
             return n;
         });
 
-        notificationService.handleEnrollmentCreated(event);
-
-        verify(notificationRepository, times(2)).save(argThat(n ->
-                n.getStatus() == NotificationStatus.FAILED
-        ));
+        assertThrows(RuntimeException.class, () ->
+            notificationService.handleEnrollmentCreated(event)
+        );
     }
 
     @Test

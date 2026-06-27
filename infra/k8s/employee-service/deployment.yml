@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-employee-service
+  namespace: training-platform
+  labels:
+    app: training-employee-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: training-employee-service
+  template:
+    metadata:
+      labels:
+        app: training-employee-service
+    spec:
+      containers:
+        - name: training-employee-service
+          image: training-employee-service:latest
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: training-employee-config
+            - secretRef:
+                name: training-employee-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 20
+            periodSeconds: 5
