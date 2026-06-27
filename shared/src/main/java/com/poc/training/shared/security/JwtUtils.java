@@ -29,24 +29,25 @@ public final class JwtUtils {
     }
 
     public static Long extractEmployeeIdAsLong(Jwt jwt) {
-        if (jwt == null) return null;
-        List<String> employeeIds = jwt.getClaimAsStringList("employeeId");
-        if (employeeIds != null && !employeeIds.isEmpty()) {
-            try {
-                return Long.parseLong(employeeIds.get(0));
-            } catch (NumberFormatException e) {
-                return null;
-            }
+        String employeeId = extractEmployeeIdRaw(jwt);
+        if (employeeId == null) return null;
+        try {
+            return Long.parseLong(employeeId);
+        } catch (NumberFormatException e) {
+            return null;
         }
-        return null;
     }
 
     public static String extractEmployeeIdAsString(Jwt jwt) {
+        return extractEmployeeIdRaw(jwt);
+    }
+
+    private static String extractEmployeeIdRaw(Jwt jwt) {
         if (jwt == null) return null;
         List<String> employeeIds = jwt.getClaimAsStringList("employeeId");
         if (employeeIds != null && !employeeIds.isEmpty()) {
             return employeeIds.get(0);
         }
-        return null;
+        return jwt.getClaimAsString("employeeId");
     }
 }

@@ -4,6 +4,7 @@ import com.poc.training.catalog.dto.CourseRequest;
 import com.poc.training.catalog.dto.CourseResponse;
 import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.service.CourseService;
+import com.poc.training.shared.exception.BusinessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,10 +15,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/v1/courses")
 @RequiredArgsConstructor
 public class CourseController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "id", "title", "description", "instructor", "capacity",
+        "enrolledCount", "status", "createdAt", "updatedAt"
+    );
 
     private final CourseService courseService;
 
@@ -30,6 +38,7 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
+        validateSortBy(sortBy);
         return ResponseEntity.ok(courseService.search(title, instructor, status, PageRequest.of(page, size, Sort.by(sortBy))));
     }
 
@@ -39,6 +48,7 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
+        validateSortBy(sortBy);
         return ResponseEntity.ok(courseService.findActiveCourses(PageRequest.of(page, size, Sort.by(sortBy))));
     }
 
@@ -65,6 +75,12 @@ public class CourseController {
     public ResponseEntity<Void> deactivateCourse(@PathVariable Long id) {
         courseService.deactivate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private void validateSortBy(String sortBy) {
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new BusinessException("Invalid sort field: '" + sortBy + "'. Allowed fields: " + ALLOWED_SORT_FIELDS);
+        }
     }
 
     @PatchMapping("/{id}/enroll")

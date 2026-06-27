@@ -3,6 +3,7 @@ package com.poc.training.enrollment.controller;
 import com.poc.training.enrollment.dto.EnrollmentRequest;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.service.EnrollmentService;
+import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.security.JwtUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +17,16 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/v1/enrollments")
 @RequiredArgsConstructor
 public class EnrollmentController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "id", "employeeId", "courseId", "status", "enrolledAt", "completedAt"
+    );
 
     private final EnrollmentService enrollmentService;
 
@@ -33,6 +40,9 @@ public class EnrollmentController {
         Jwt jwt = JwtUtils.getJwtFromContext();
         if (JwtUtils.isEmployeeOnly(jwt) && !employeeId.equals(JwtUtils.extractEmployeeIdAsLong(jwt))) {
             throw new AccessDeniedException("Employees can only view their own enrollments");
+        }
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new BusinessException("Invalid sort field: '" + sortBy + "'. Allowed fields: " + ALLOWED_SORT_FIELDS);
         }
         return ResponseEntity.ok(enrollmentService.findByEmployeeId(employeeId, PageRequest.of(page, size, Sort.by(sortBy))));
     }

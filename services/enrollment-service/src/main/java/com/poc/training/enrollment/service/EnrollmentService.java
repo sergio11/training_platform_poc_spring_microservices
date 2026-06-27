@@ -124,10 +124,19 @@ public class EnrollmentService {
 
         Long courseId = enrollment.getCourseId();
 
-        trainingCatalogClient.incrementEnrolledCount(courseId);
-
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         Enrollment saved = enrollmentRepository.save(enrollment);
+
+        try {
+            trainingCatalogClient.incrementEnrolledCount(courseId);
+        } catch (Exception e) {
+            try {
+                trainingCatalogClient.decrementEnrolledCount(courseId);
+            } catch (Exception ex) {
+                log.error("Failed to compensate enrolledCount for course {} after increment failure", courseId, ex);
+            }
+            throw e;
+        }
 
         EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
