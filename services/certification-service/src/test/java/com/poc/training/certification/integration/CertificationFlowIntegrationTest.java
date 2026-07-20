@@ -5,9 +5,10 @@ import com.poc.training.certification.repository.CertificateRepository;
 import com.poc.training.certification.service.CertificationService;
 import com.poc.training.shared.event.CertificateGeneratedEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
@@ -18,6 +19,7 @@ import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Testcontainers
 @ActiveProfiles("test")
 @Tag("integration")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CertificationFlowIntegrationTest {
 
     @Container
@@ -36,15 +39,25 @@ class CertificationFlowIntegrationTest {
             .withPassword("test");
 
     @Container
-    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine");
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
+            .withStartupTimeout(Duration.ofSeconds(120));
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
+    }
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeAll
+    void createSequence() {
+        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS certificate_number_seq START 1 INCREMENT 1");
     }
 
     @Autowired
@@ -53,6 +66,11 @@ class CertificationFlowIntegrationTest {
     @Autowired
     private CertificationService certificationService;
 
+    @BeforeEach
+    void setUp() {
+        certificateRepository.deleteAll();
+    }
+
     @Test
     void contextLoads() {
     }
@@ -60,6 +78,7 @@ class CertificationFlowIntegrationTest {
     @Test
     void shouldCreateCertificate() {
         Certificate certificate = Certificate.builder()
+                .certificateNumber("CERT-20260720-000001")
                 .enrollmentId(1L)
                 .employeeId(1L)
                 .courseId(1L)
@@ -76,6 +95,7 @@ class CertificationFlowIntegrationTest {
     @Test
     void shouldFindCertificateByEnrollmentId() {
         Certificate certificate = Certificate.builder()
+                .certificateNumber("CERT-20260720-000003")
                 .enrollmentId(1L)
                 .employeeId(1L)
                 .courseId(1L)
@@ -91,12 +111,14 @@ class CertificationFlowIntegrationTest {
     @Test
     void shouldFindCertificatesByEmployeeId() {
         Certificate cert1 = Certificate.builder()
+                .certificateNumber("CERT-20260720-000001")
                 .enrollmentId(1L)
                 .employeeId(1L)
                 .courseId(1L)
                 .build();
 
         Certificate cert2 = Certificate.builder()
+                .certificateNumber("CERT-20260720-000002")
                 .enrollmentId(2L)
                 .employeeId(1L)
                 .courseId(2L)
@@ -165,6 +187,7 @@ class CertificationFlowIntegrationTest {
     @Test
     void shouldNotDuplicateCertificateForSameEnrollment() {
         Certificate cert1 = Certificate.builder()
+                .certificateNumber("CERT-20260720-000001")
                 .enrollmentId(100L)
                 .employeeId(1L)
                 .courseId(1L)
@@ -175,6 +198,7 @@ class CertificationFlowIntegrationTest {
         assertTrue(existing.isPresent());
 
         Certificate cert2 = Certificate.builder()
+                .certificateNumber("CERT-20260720-000002")
                 .enrollmentId(100L)
                 .employeeId(2L)
                 .courseId(2L)

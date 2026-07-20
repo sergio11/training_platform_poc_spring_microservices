@@ -13,6 +13,8 @@ import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
@@ -26,7 +28,8 @@ class NotificationServiceApplicationTest {
             .withPassword("test");
 
     @Container
-    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine");
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
+            .withStartupTimeout(Duration.ofSeconds(120));
 
     @MockitoBean
     JwtDecoder jwtDecoder;

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Tag;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -23,6 +24,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Tag("integration")
 class CertificationRabbitMQIntegrationTest extends AbstractIntegrationTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeAll
+    void createSequence() {
+        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS certificate_number_seq START 1 INCREMENT 1");
+    }
 
     @Autowired
     private CertificationService certificationService;

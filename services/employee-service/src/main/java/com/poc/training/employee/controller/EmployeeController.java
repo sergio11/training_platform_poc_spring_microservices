@@ -3,6 +3,7 @@ package com.poc.training.employee.controller;
 import com.poc.training.employee.dto.EmployeeRequest;
 import com.poc.training.employee.dto.EmployeeResponse;
 import com.poc.training.employee.service.EmployeeService;
+import com.poc.training.shared.exception.BusinessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,10 +14,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/v1/employees")
 @RequiredArgsConstructor
 public class EmployeeController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "id", "employeeNumber", "fullName", "email", "department",
+        "position", "active", "createdAt", "updatedAt"
+    );
 
     private final EmployeeService employeeService;
 
@@ -26,6 +34,7 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
+        validateSortBy(sortBy);
         return ResponseEntity.ok(employeeService.findAll(PageRequest.of(page, size, Sort.by(sortBy))));
     }
 
@@ -64,5 +73,11 @@ public class EmployeeController {
     public ResponseEntity<Void> deactivate(@PathVariable Long id) {
         employeeService.deactivate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private void validateSortBy(String sortBy) {
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new BusinessException("Invalid sort field: '" + sortBy + "'. Allowed fields: " + ALLOWED_SORT_FIELDS);
+        }
     }
 }

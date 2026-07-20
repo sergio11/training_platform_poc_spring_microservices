@@ -2,6 +2,7 @@ package com.poc.training.e2e.base;
 
 import tools.jackson.databind.JsonNode;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -320,7 +321,10 @@ public abstract class BaseE2ETest {
                 .retrieve().toBodilessEntity().block();
     }
 
-    protected static void waitForAsyncProcessing() {
-        try { Thread.sleep(5000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+    protected static void waitForAsyncProcessing(ThrowingRunnable assertion) {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .untilAsserted(assertion);
     }
 }

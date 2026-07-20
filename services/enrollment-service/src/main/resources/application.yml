@@ -36,6 +36,9 @@ spring:
 server:
   port: 8082
 
+outbox:
+  polling-interval: ${OUTBOX_POLLING_INTERVAL:5000}
+
 management:
   endpoints:
     web:

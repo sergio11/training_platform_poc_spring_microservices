@@ -33,7 +33,8 @@ public class Employee {
     private String position;
 
     @Column(nullable = false)
-    private boolean active;
+    @Builder.Default
+    private boolean active = true;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -44,7 +45,6 @@ public class Employee {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
-        active = true;
     }
 
     @PreUpdate

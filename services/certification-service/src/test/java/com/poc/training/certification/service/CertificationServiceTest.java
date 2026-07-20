@@ -100,10 +100,10 @@ class CertificationServiceTest {
                 .build();
 
         when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
+        when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
         when(certificateRepository.save(any(Certificate.class))).thenAnswer(inv -> {
             Certificate c = inv.getArgument(0);
             c.setId(1L);
-            c.setCertificateNumber("CERT-TEST-12345");
             return c;
         });
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
@@ -145,6 +145,7 @@ class CertificationServiceTest {
                 .build();
 
         when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
+        when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
         when(certificateRepository.save(any(Certificate.class)))
                 .thenThrow(new DataIntegrityViolationException("Detail: Key (enrollment_id)=(1) already exists."));
 

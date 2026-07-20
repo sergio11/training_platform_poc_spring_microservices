@@ -21,7 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Slf4j
@@ -104,7 +106,12 @@ public class CertificationService {
 
     private Certificate generateCertificate(CourseCompletedEvent event) {
         try {
+            String seq = String.format("%06d", certificateRepository.nextCertificateNumber());
+            String date = DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDate.now());
+            String certificateNumber = "CERT-" + date + "-" + seq;
+
             Certificate certificate = Certificate.builder()
+                    .certificateNumber(certificateNumber)
                     .enrollmentId(event.getEnrollmentId())
                     .employeeId(event.getEmployeeId())
                     .courseId(event.getCourseId())

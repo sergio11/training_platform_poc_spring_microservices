@@ -21,7 +21,7 @@ public class OutboxEventScheduler {
     private final RabbitTemplate rabbitTemplate;
     private final TransactionTemplate transactionTemplate;
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelayString = "${outbox.polling-interval:5000}")
     public void processPendingEvents() {
         List<OutboxEvent> pendingEvents = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc();
         for (OutboxEvent event : pendingEvents) {

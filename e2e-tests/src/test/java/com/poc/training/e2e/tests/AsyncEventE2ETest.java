@@ -177,20 +177,20 @@ class AsyncEventE2ETest extends BaseE2ETest {
         Long emp = createEmployee(token, "EMP-IDEMP");
         Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
 
-        waitForAsyncProcessing();
+        waitForAsyncProcessing(() -> {
+            Map<?, ?> page = notificationClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
+                            .queryParam("recipientId", emp).build())
+                    .header("Authorization", "Bearer " + token)
+                    .retrieve().bodyToMono(Map.class).block();
 
-        Map<?, ?> page = notificationClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                        .queryParam("recipientId", emp).build())
-                .header("Authorization", "Bearer " + token)
-                .retrieve().bodyToMono(Map.class).block();
-
-        var content = (java.util.List<?>) page.get("content");
-        long enrollmentCreatedCount = content.stream()
-                .map(n -> ((Map<?, ?>) n).get("type"))
-                .filter(t -> t.equals("ENROLLMENT_CREATED"))
-                .count();
-        assertThat(enrollmentCreatedCount).isEqualTo(1);
+            var content = (java.util.List<?>) page.get("content");
+            long enrollmentCreatedCount = content.stream()
+                    .map(n -> ((Map<?, ?>) n).get("type"))
+                    .filter(t -> t.equals("ENROLLMENT_CREATED"))
+                    .count();
+            assertThat(enrollmentCreatedCount).isEqualTo(1);
+        });
     }
 
     @Test
@@ -205,16 +205,16 @@ class AsyncEventE2ETest extends BaseE2ETest {
         approveEnrollment(token, enrollId);
         completeEnrollment(token, enrollId);
 
-        waitForAsyncProcessing();
+        waitForAsyncProcessing(() -> {
+            Map<?, ?> certPage = certificationClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/v1/certificates")
+                            .queryParam("employeeId", emp).build())
+                    .header("Authorization", "Bearer " + token)
+                    .retrieve().bodyToMono(Map.class).block();
 
-        Map<?, ?> certPage = certificationClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/certificates")
-                        .queryParam("employeeId", emp).build())
-                .header("Authorization", "Bearer " + token)
-                .retrieve().bodyToMono(Map.class).block();
-
-        var content = (java.util.List<?>) certPage.get("content");
-        assertThat(content).hasSize(1);
+            var content = (java.util.List<?>) certPage.get("content");
+            assertThat(content).hasSize(1);
+        });
     }
 
     @Test

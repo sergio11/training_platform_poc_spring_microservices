@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CertificateTest {
 
     @Test
-    void shouldSetDefaultValuesOnPrePersist() {
+    void shouldSetIssuedAtOnPrePersist() {
         Certificate cert = Certificate.builder()
                 .enrollmentId(1L)
                 .employeeId(1L)
@@ -19,19 +19,6 @@ class CertificateTest {
         cert.onCreate();
 
         assertNotNull(cert.getIssuedAt());
-        assertNotNull(cert.getCertificateNumber());
-        assertTrue(cert.getCertificateNumber().startsWith("CERT-"));
-    }
-
-    @Test
-    void shouldGenerateUniqueCertificateNumbers() {
-        Certificate cert1 = Certificate.builder().enrollmentId(1L).employeeId(1L).courseId(1L).build();
-        Certificate cert2 = Certificate.builder().enrollmentId(2L).employeeId(2L).courseId(2L).build();
-
-        cert1.onCreate();
-        cert2.onCreate();
-
-        assertNotEquals(cert1.getCertificateNumber(), cert2.getCertificateNumber());
     }
 
     @Test

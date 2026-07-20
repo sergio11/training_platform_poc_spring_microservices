@@ -87,22 +87,22 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
     @Order(6)
     @DisplayName("Certificate was auto-generated after course completion")
     void shouldVerifyCertificateGenerated() {
-        waitForAsyncProcessing();
+        waitForAsyncProcessing(() -> {
+            Map<?, ?> certPage = certificationClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/v1/certificates")
+                            .queryParam("employeeId", employeeId).build())
+                    .header("Authorization", "Bearer " + adminToken())
+                    .retrieve().bodyToMono(Map.class).block();
 
-        Map<?, ?> certPage = certificationClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/certificates")
-                        .queryParam("employeeId", employeeId).build())
-                .header("Authorization", "Bearer " + adminToken())
-                .retrieve().bodyToMono(Map.class).block();
+            assertThat(certPage).isNotNull();
+            var content = (java.util.List<?>) certPage.get("content");
+            assertThat(content).isNotEmpty();
 
-        assertThat(certPage).isNotNull();
-        var content = (java.util.List<?>) certPage.get("content");
-        assertThat(content).isNotEmpty();
-
-        Map<?, ?> cert = (Map<?, ?>) content.get(0);
-        assertThat(cert.get("certificateNumber")).asString().startsWith("CERT-");
-        assertThat(cert.get("employeeId")).isEqualTo(employeeId);
-        assertThat(cert.get("courseId")).isEqualTo(courseId);
+            Map<?, ?> cert = (Map<?, ?>) content.get(0);
+            assertThat(cert.get("certificateNumber")).asString().startsWith("CERT-");
+            assertThat(cert.get("employeeId")).isEqualTo(employeeId);
+            assertThat(cert.get("courseId")).isEqualTo(courseId);
+        });
     }
 
     @Test

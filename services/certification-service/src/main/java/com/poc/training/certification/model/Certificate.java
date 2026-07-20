@@ -3,7 +3,6 @@ package com.poc.training.certification.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "certificates")
@@ -39,14 +38,5 @@ public class Certificate {
     @PrePersist
     protected void onCreate() {
         issuedAt = LocalDateTime.now();
-        if (certificateNumber == null) {
-            certificateNumber = generateCertificateNumber();
-        }
-    }
-
-    private String generateCertificateNumber() {
-        String ts = Long.toHexString(System.currentTimeMillis()).toUpperCase();
-        String rand = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
-        return "CERT-" + ts + "-" + rand;
     }
 }
