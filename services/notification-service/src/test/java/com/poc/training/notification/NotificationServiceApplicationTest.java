@@ -1,6 +1,7 @@
 package com.poc.training.notification;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -15,6 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
+@Tag("integration")
 class NotificationServiceApplicationTest {
 
     @Container

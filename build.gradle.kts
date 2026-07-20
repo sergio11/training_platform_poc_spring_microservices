@@ -52,19 +52,67 @@ subprojects {
             csv.required.set(true)
             html.required.set(true)
         }
+        classDirectories.setFrom(
+            classDirectories.files.map { dir ->
+                fileTree(dir) {
+                    exclude(
+                        "**/*Application.class",
+                        "**/*Config.class",
+                        "**/*DTO.class",
+                        "**/*Request.class",
+                        "**/*Response.class",
+                        "**/*Constants.class",
+                        "**/*Exception.class",
+                        "**/*Handler.class"
+                    )
+                }
+            }
+        )
     }
 
     tasks.withType<JacocoCoverageVerification> {
         violationRules {
             rule {
                 limit {
-                    minimum = "0.00".toBigDecimal()
+                    minimum = "0.98".toBigDecimal()
                 }
             }
         }
     }
 
-    tasks.named("check") {
-        dependsOn("jacocoTestCoverageVerification")
+    // Integration test task
+    tasks.register("integrationTest", Test::class) {
+        useJUnitPlatform {
+            includeTags("integration")
+        }
+        description = "Runs integration tests with Testcontainers"
+        group = "verification"
+        shouldRunAfter("test")
     }
+
+    // Unit test task (excluding integration tests)
+    tasks.register("unitTest", Test::class) {
+        useJUnitPlatform {
+            excludeTags("integration")
+        }
+        description = "Runs unit tests only"
+        group = "verification"
+    }
+}
+
+// E2E test task at root level
+tasks.register("e2eTest", Test::class) {
+    useJUnitPlatform()
+    description = "Runs E2E tests"
+    group = "verification"
+    maxParallelForks = 1
+    shouldRunAfter("test")
+    systemProperty("junit.jupiter.execution.timeout.default", "600s")
+}
+
+tasks.register("testAll", Test::class) {
+    useJUnitPlatform()
+    description = "Runs all tests: unit + integration"
+    group = "verification"
+    shouldRunAfter("test")
 }

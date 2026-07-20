@@ -4,6 +4,7 @@ import com.poc.training.catalog.model.Course;
 import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.repository.CourseRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
+@Tag("integration")
 class TrainingCatalogServiceIntegrationTest {
 
     @Container

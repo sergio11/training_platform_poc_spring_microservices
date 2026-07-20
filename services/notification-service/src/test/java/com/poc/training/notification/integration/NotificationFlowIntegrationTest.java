@@ -6,6 +6,7 @@ import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.shared.event.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Testcontainers
+@Tag("integration")
 class NotificationFlowIntegrationTest {
 
     @Container

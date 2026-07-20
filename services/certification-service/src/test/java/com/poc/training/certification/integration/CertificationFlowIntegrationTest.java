@@ -6,6 +6,7 @@ import com.poc.training.certification.service.CertificationService;
 import com.poc.training.shared.event.CertificateGeneratedEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
+@Tag("integration")
 class CertificationFlowIntegrationTest {
 
     @Container

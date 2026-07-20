@@ -5,6 +5,16 @@ require 'open3'
 # Container engine: 'podman' or 'docker'
 CONTAINER_ENGINE = ENV['CONTAINER_ENGINE'] || 'podman'
 
+# Podman DOCKER_HOST for Windows
+PODMAN_DOCKER_HOST = "npipe:////./pipe/podman-machine-default"
+
+def setup_podman_env
+  ENV['DOCKER_HOST'] ||= PODMAN_DOCKER_HOST
+  ENV['TESTCONTAINERS_RYUK_DISABLED'] = 'true'
+  puts "  DOCKER_HOST=#{ENV['DOCKER_HOST']}"
+  puts "  TESTCONTAINERS_RYUK_DISABLED=true"
+end
+
 namespace :infra do
   desc 'Start all infrastructure services'
   task :start do
@@ -68,9 +78,9 @@ namespace :build do
     puts "#{service_name} built successfully!"
   end
 
-  desc 'Build Docker/Podman images'
+  desc 'Build Podman images'
   task :images do
-    puts "Building container images..."
+    puts "Building container images with #{CONTAINER_ENGINE}..."
     services = [
       { name: 'training-catalog-service', port: 8081 },
       { name: 'training-enrollment-service', port: 8082 },
@@ -117,53 +127,63 @@ namespace :run do
 end
 
 namespace :test do
-  desc 'Run all tests'
+  desc 'Run all tests (unit + integration)'
   task :all do
-    puts "Running all tests..."
+    puts "Running all tests (unit + integration)..."
+    setup_podman_env
     sh "./gradlew test"
     puts "All tests completed!"
+  end
+
+  desc 'Run unit tests only (no Testcontainers)'
+  task :unit do
+    puts "Running unit tests only..."
+    sh "./gradlew unitTest"
+    puts "Unit tests completed!"
+  end
+
+  desc 'Run integration tests only (Podman required)'
+  task :integration do
+    puts "Running integration tests (Testcontainers + Podman)..."
+    setup_podman_env
+    sh "./gradlew integrationTest"
+    puts "Integration tests completed!"
   end
 
   desc 'Run specific service tests'
   task :service, [:name] do |t, args|
     service_name = args[:name] || abort("Usage: rake test:service[service-name]")
     puts "Running tests for #{service_name}..."
+    setup_podman_env
     sh "./gradlew :services:#{service_name}:test"
     puts "Tests completed!"
   end
 
-  desc 'Run tests with coverage'
+  desc 'Run tests with coverage report'
   task :coverage do
     puts "Running tests with coverage..."
-    sh "./gradlew test jacocoTestReport"
-    puts "Test report generated at build/reports/jacoco/"
+    setup_podman_env
+    sh "./gradlew test jacocoTestReport jacocoTestCoverageVerification"
+    puts ""
+    puts "Test reports generated at:"
+    puts "  - HTML:  build/reports/jacoco/test/html/index.html"
+    puts "  - XML:   build/reports/jacoco/test/jacocoTestReport.xml"
+    puts "  - CSV:   build/reports/jacoco/test/jacocoTestReport.csv"
   end
 
-  desc 'Run E2E tests (requires Podman running)'
+  desc 'Run E2E tests (Podman required)'
   task :e2e do
-    puts "Running E2E tests..."
-    puts "Make sure Podman is running."
+    puts "Running E2E tests with Podman..."
     puts ""
 
     # Verify Podman is available
     begin
-      sh "podman --version"
+      sh "#{CONTAINER_ENGINE} --version"
     rescue
-      abort("Podman not found. Install Podman Desktop.")
+      abort("#{CONTAINER_ENGINE} not found. Install Podman Desktop.")
     end
 
-    # Set DOCKER_HOST for Podman if not set
-    unless ENV['DOCKER_HOST']
-      puts "DOCKER_HOST not set, using default Podman socket..."
-      if RUBY_PLATFORM =~ /mingw|mswin/
-        ENV['DOCKER_HOST'] = "npipe:////./pipe/podman-machine-default"
-      else
-        ENV['DOCKER_HOST'] = "unix:///run/user/#{Process.uid}/podman/podman.sock"
-      end
-      puts "  DOCKER_HOST=#{ENV['DOCKER_HOST']}"
-    end
-
-    ENV['TESTCONTAINERS_RYUK_DISABLED'] = 'true'
+    setup_podman_env
 
     sh "./gradlew :e2e-tests:test --info"
     puts ""
@@ -173,7 +193,7 @@ namespace :test do
   desc 'Run E2E tests with coverage'
   task :e2e_coverage do
     puts "Running E2E tests with coverage..."
-    ENV['TESTCONTAINERS_RYUK_DISABLED'] = 'true'
+    setup_podman_env
     sh "./gradlew :e2e-tests:test :e2e-tests:jacocoTestReport"
     puts "E2E coverage report at e2e-tests/build/reports/jacoco/"
   end
@@ -181,8 +201,56 @@ namespace :test do
   desc 'Clean up E2E test containers'
   task :e2e_cleanup do
     puts "Cleaning up E2E test containers..."
-    sh "podman rm -f $(podman ps -aq --filter label=org.testcontainers 2>/dev/null) 2>/dev/null || true"
+    setup_podman_env
+    sh "#{CONTAINER_ENGINE} rm -f $(#{CONTAINER_ENGINE} ps -aq --filter label=org.testcontainers 2>/dev/null) 2>/dev/null || true"
     puts "Cleanup done."
+  end
+
+  desc 'Run a specific test class'
+  task :class, [:class_name] do |t, args|
+    class_name = args[:class_name] || abort("Usage: rake test:class[com.example.MyTest]")
+    puts "Running test class: #{class_name}..."
+    setup_podman_env
+    sh "./gradlew test --tests #{class_name}"
+    puts "Test class completed!"
+  end
+
+  desc 'Run tests with verbose output'
+  task :verbose do
+    puts "Running all tests with verbose output..."
+    setup_podman_env
+    sh "./gradlew test --info --stacktrace"
+    puts "Tests completed!"
+  end
+
+  desc 'Run tests for a specific module'
+  task :module, [:module_name] do |t, args|
+    module_name = args[:module_name] || abort("Usage: rake test:module[enrollment-service]")
+    puts "Running tests for module: #{module_name}..."
+    setup_podman_env
+    sh "./gradlew :services:#{module_name}:test --info"
+    puts "Module tests completed!"
+  end
+
+  desc 'Run shared module tests'
+  task :shared do
+    puts "Running shared module tests..."
+    sh "./gradlew :shared:test"
+    puts "Shared tests completed!"
+  end
+
+  desc 'Run all tests with detailed coverage analysis'
+  task :full_coverage do
+    puts "Running full test suite with coverage analysis..."
+    setup_podman_env
+    sh "./gradlew clean test jacocoTestReport jacocoTestCoverageVerification --info"
+    puts ""
+    puts "=" * 60
+    puts "COVERAGE REPORT SUMMARY"
+    puts "=" * 60
+    puts ""
+    puts "Coverage verification: PASSED (minimum 98%)"
+    puts "=" * 60
   end
 end
 
@@ -227,10 +295,10 @@ namespace :db do
   desc 'Create all databases'
   task :create do
     puts "Creating databases..."
-    databases = ['training_catalog', 'training_enrollment', 'training_certification', 'training_notification']
+    databases = ['training_catalog', 'training_enrollment', 'training_certification', 'training_notification', 'training_employee']
     databases.each do |db|
       puts "Creating database #{db}..."
-      sh "podman exec training-postgresql psql -U postgres -c \"CREATE DATABASE #{db};\" || true"
+      sh "#{CONTAINER_ENGINE} exec training-postgresql psql -U postgres -c \"CREATE DATABASE #{db};\" || true"
     end
     puts "Databases created!"
   end
@@ -240,10 +308,10 @@ namespace :db do
     puts "WARNING: This will delete all data!"
     puts "Press Ctrl+C to cancel, wait 3 seconds to continue..."
     sleep 3
-    databases = ['training_catalog', 'training_enrollment', 'training_certification', 'training_notification']
+    databases = ['training_catalog', 'training_enrollment', 'training_certification', 'training_notification', 'training_employee']
     databases.each do |db|
       puts "Dropping database #{db}..."
-      sh "podman exec training-postgresql psql -U postgres -c \"DROP DATABASE IF EXISTS #{db};\" || true"
+      sh "#{CONTAINER_ENGINE} exec training-postgresql psql -U postgres -c \"DROP DATABASE IF EXISTS #{db};\" || true"
     end
     puts "Databases dropped!"
   end
@@ -252,9 +320,9 @@ end
 desc 'Show all available tasks'
 task :help do
   puts "Corporate Training Platform - Available Tasks"
-  puts "=" * 50
+  puts "=" * 60
   puts ""
-  puts "Infrastructure:"
+  puts "Infrastructure (Podman):"
   puts "  rake infra:start       - Start infrastructure services"
   puts "  rake infra:stop        - Stop infrastructure services"
   puts "  rake infra:restart     - Restart infrastructure services"
@@ -265,16 +333,27 @@ task :help do
   puts "Build:"
   puts "  rake build:all         - Build all services"
   puts "  rake build:service[X]  - Build specific service"
-  puts "  rake build:images      - Build container images"
+  puts "  rake build:images      - Build Podman images"
   puts ""
   puts "Run:"
   puts "  rake run:service[X]    - Run specific service"
   puts "  rake run:all           - Run all services"
   puts ""
-  puts "Test:"
-  puts "  rake test:all          - Run all tests"
+  puts "Test (Core):"
+  puts "  rake test:all          - Run all tests (unit + integration)"
+  puts "  rake test:unit         - Run unit tests only (fast, no containers)"
+  puts "  rake test:integration  - Run integration tests (Podman required)"
   puts "  rake test:service[X]   - Run specific service tests"
-  puts "  rake test:coverage     - Run tests with coverage"
+  puts "  rake test:module[X]    - Run tests for a module"
+  puts "  rake test:shared       - Run shared module tests"
+  puts "  rake test:class[X]     - Run a specific test class"
+  puts "  rake test:verbose      - Run tests with verbose output"
+  puts ""
+  puts "Test (Coverage):"
+  puts "  rake test:coverage     - Run tests with JaCoCo coverage report"
+  puts "  rake test:full_coverage - Full test suite with 98% coverage verification"
+  puts ""
+  puts "Test (E2E):"
   puts "  rake test:e2e          - Run E2E tests (Podman required)"
   puts "  rake test:e2e_coverage - Run E2E tests with coverage"
   puts "  rake test:e2e_cleanup  - Clean up E2E test containers"
@@ -291,6 +370,11 @@ task :help do
   puts ""
   puts "Help:"
   puts "  rake help              - Show this help"
+  puts ""
+  puts "Quick Start:"
+  puts "  rake test:unit           - Fast feedback (no Podman needed)"
+  puts "  rake test:integration    - Full integration (Podman needed)"
+  puts "  rake test:full_coverage  - Complete verification"
 end
 
 task :default => :help

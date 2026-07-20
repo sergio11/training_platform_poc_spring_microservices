@@ -1,5 +1,6 @@
 rootProject.name = "poc-architecture"
 
+include("test-support")
 include("services:config-server")
 include("services:training-catalog-service")
 include("services:enrollment-service")

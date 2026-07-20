@@ -33,6 +33,8 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:rabbitmq")
+    testImplementation(project(":test-support"))
+    testImplementation("com.icegreen:greenmail-junit5:2.0.0")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
 }
