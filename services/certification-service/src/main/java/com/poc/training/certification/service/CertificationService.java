@@ -1,7 +1,7 @@
 package com.poc.training.certification.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.poc.training.certification.dto.CertificateResponse;
 import com.poc.training.certification.model.Certificate;
 import com.poc.training.certification.model.OutboxEvent;
@@ -97,7 +97,7 @@ public class CertificationService {
 
             outboxEventRepository.save(outboxEvent);
             log.info("Persisted CertificateGeneratedEvent to outbox for certificate: {}", saved.getId());
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to serialize CertificateGeneratedEvent: {}", e.getMessage());
         }
     }

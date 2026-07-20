@@ -138,6 +138,52 @@ namespace :test do
     sh "./gradlew test jacocoTestReport"
     puts "Test report generated at build/reports/jacoco/"
   end
+
+  desc 'Run E2E tests (requires Podman running)'
+  task :e2e do
+    puts "Running E2E tests..."
+    puts "Make sure Podman is running."
+    puts ""
+
+    # Verify Podman is available
+    begin
+      sh "podman --version"
+    rescue
+      abort("Podman not found. Install Podman Desktop.")
+    end
+
+    # Set DOCKER_HOST for Podman if not set
+    unless ENV['DOCKER_HOST']
+      puts "DOCKER_HOST not set, using default Podman socket..."
+      if RUBY_PLATFORM =~ /mingw|mswin/
+        ENV['DOCKER_HOST'] = "npipe:////./pipe/podman-machine-default"
+      else
+        ENV['DOCKER_HOST'] = "unix:///run/user/#{Process.uid}/podman/podman.sock"
+      end
+      puts "  DOCKER_HOST=#{ENV['DOCKER_HOST']}"
+    end
+
+    ENV['TESTCONTAINERS_RYUK_DISABLED'] = 'true'
+
+    sh "./gradlew :e2e-tests:test --info"
+    puts ""
+    puts "E2E tests completed!"
+  end
+
+  desc 'Run E2E tests with coverage'
+  task :e2e_coverage do
+    puts "Running E2E tests with coverage..."
+    ENV['TESTCONTAINERS_RYUK_DISABLED'] = 'true'
+    sh "./gradlew :e2e-tests:test :e2e-tests:jacocoTestReport"
+    puts "E2E coverage report at e2e-tests/build/reports/jacoco/"
+  end
+
+  desc 'Clean up E2E test containers'
+  task :e2e_cleanup do
+    puts "Cleaning up E2E test containers..."
+    sh "podman rm -f $(podman ps -aq --filter label=org.testcontainers 2>/dev/null) 2>/dev/null || true"
+    puts "Cleanup done."
+  end
 end
 
 namespace :k8s do
@@ -229,6 +275,9 @@ task :help do
   puts "  rake test:all          - Run all tests"
   puts "  rake test:service[X]   - Run specific service tests"
   puts "  rake test:coverage     - Run tests with coverage"
+  puts "  rake test:e2e          - Run E2E tests (Podman required)"
+  puts "  rake test:e2e_coverage - Run E2E tests with coverage"
+  puts "  rake test:e2e_cleanup  - Clean up E2E test containers"
   puts ""
   puts "Kubernetes:"
   puts "  rake k8s:deploy        - Deploy to Kubernetes"

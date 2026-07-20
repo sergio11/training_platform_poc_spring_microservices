@@ -14,8 +14,8 @@ import com.poc.training.shared.event.EnrollmentApprovedEvent;
 import com.poc.training.shared.event.EnrollmentCreatedEvent;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,7 +59,7 @@ class EnrollmentServiceTest {
     void setUp() {
         try {
             lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException(e);
         }
         enrollmentService = new EnrollmentService(enrollmentRepository, trainingCatalogClient, employeeClient, outboxEventRepository, objectMapper);
@@ -187,5 +187,38 @@ class EnrollmentServiceTest {
         when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
 
         assertThrows(BusinessException.class, () -> enrollmentService.complete(1L));
+    }
+
+    @Test
+    void shouldCancelPendingEnrollmentAndEmitEvent() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EnrollmentResponse result = enrollmentService.cancel(1L);
+        assertEquals(EnrollmentStatus.CANCELLED.name(), result.getStatus());
+        verify(enrollmentRepository).save(any(Enrollment.class));
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void shouldCancelApprovedEnrollmentDecrementCountAndEmitEvent() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.APPROVED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EnrollmentResponse result = enrollmentService.cancel(1L);
+        assertEquals(EnrollmentStatus.CANCELLED.name(), result.getStatus());
+        verify(trainingCatalogClient).decrementEnrolledCount(1L);
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCancellingNonCancellableEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.COMPLETED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(BusinessException.class, () -> enrollmentService.cancel(1L));
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
     }
 }

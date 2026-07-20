@@ -45,14 +45,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue courseCompletedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_COURSE_COMPLETED)
-                .deadLetterExchange("")
-                .deadLetterRoutingKey("notification.dlq")
-                .build();
-    }
-
-    @Bean
     public Queue certificateGeneratedQueue() {
         return QueueBuilder.durable(RabbitMQConstants.QUEUE_CERTIFICATE_GENERATED)
                 .deadLetterExchange("")
@@ -69,6 +61,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue enrollmentCancelledQueue() {
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_CANCELLED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
     public Binding enrollmentCreatedBinding(Queue enrollmentCreatedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(enrollmentCreatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED);
     }
@@ -79,11 +79,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding courseCompletedBinding(Queue courseCompletedQueue, TopicExchange trainingExchange) {
-        return BindingBuilder.bind(courseCompletedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED);
-    }
-
-    @Bean
     public Binding certificateGeneratedBinding(Queue certificateGeneratedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(certificateGeneratedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED);
     }
@@ -91,6 +86,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding enrollmentRejectedBinding(Queue enrollmentRejectedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(enrollmentRejectedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_REJECTED);
+    }
+
+    @Bean
+    public Binding enrollmentCancelledBinding(Queue enrollmentCancelledQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(enrollmentCancelledQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CANCELLED);
     }
 
     @Bean

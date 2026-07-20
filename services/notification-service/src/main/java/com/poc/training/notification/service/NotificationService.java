@@ -1,7 +1,7 @@
 package com.poc.training.notification.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
@@ -140,6 +140,25 @@ public class NotificationService {
     }
 
     @Transactional
+    @RabbitListener(queues = "enrollment.cancelled")
+    public void handleEnrollmentCancelled(EnrollmentCancelledEvent event) {
+        if (isAlreadyProcessed(event.getEventId())) return;
+
+        String message = String.format(
+                "Your enrollment %d for course %d has been cancelled.",
+                event.getEnrollmentId(), event.getCourseId());
+
+        saveNotification(
+                NotificationType.ENROLLMENT_CANCELLED,
+                event.getEmployeeId(),
+                message,
+                String.valueOf(event.getEnrollmentId()),
+                "ENROLLMENT",
+                event.getEventId()
+        );
+    }
+
+    @Transactional
     @RabbitListener(queues = "course.completed")
     public void handleCourseCompleted(CourseCompletedEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
@@ -236,7 +255,7 @@ public class NotificationService {
                     .routingKey(routingKey)
                     .build();
             outboxEventRepository.save(outboxEvent);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to serialize {} for outbox: {}", eventType, e.getMessage());
         }
     }

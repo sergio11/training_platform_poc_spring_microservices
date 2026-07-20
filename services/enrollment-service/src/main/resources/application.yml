@@ -57,9 +57,17 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 10000
         permittedNumberOfCallsInHalfOpenState: 3
+      employeeService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
   retry:
     instances:
       catalogService:
+        maxAttempts: 3
+        waitDuration: 500
+      employeeService:
         maxAttempts: 3
         waitDuration: 500
 

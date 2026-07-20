@@ -1,6 +1,7 @@
 package com.poc.training.enrollment.client;
 
 import com.poc.training.shared.dto.CourseDTO;
+import com.poc.training.shared.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,12 +43,9 @@ class TrainingCatalogClientTest {
     }
 
     @Test
-    void shouldReturnDefaultCourseInGetCourseFallback() {
-        CourseDTO result = trainingCatalogClient.getCourseFallback(1L, new RuntimeException("Connection refused"));
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals(0, result.getCapacity());
-        assertEquals(0, result.getEnrolledCount());
+    void shouldThrowInGetCourseFallback() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                trainingCatalogClient.getCourseFallback(1L, new RuntimeException("Connection refused")));
     }
 
     @Test
@@ -57,12 +55,9 @@ class TrainingCatalogClientTest {
     }
 
     @Test
-    void shouldReturnDefaultCourseInGetCourseFallbackWithNullId() {
-        CourseDTO result = trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error"));
-        assertNotNull(result);
-        assertNull(result.getId());
-        assertEquals(0, result.getCapacity());
-        assertEquals(0, result.getEnrolledCount());
+    void shouldThrowInGetCourseFallbackWithNullId() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error")));
     }
 
     @Test

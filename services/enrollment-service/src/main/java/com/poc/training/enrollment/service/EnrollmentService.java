@@ -1,7 +1,7 @@
 package com.poc.training.enrollment.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.poc.training.shared.dto.CourseDTO;
 import com.poc.training.enrollment.client.EmployeeClient;
 import com.poc.training.enrollment.client.TrainingCatalogClient;
@@ -11,6 +11,7 @@ import com.poc.training.enrollment.model.EnrollmentStatus;
 import com.poc.training.enrollment.model.OutboxEvent;
 import com.poc.training.enrollment.repository.EnrollmentRepository;
 import com.poc.training.enrollment.repository.OutboxEventRepository;
+import com.poc.training.shared.event.EnrollmentCancelledEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.EnrollmentApprovedEvent;
 import com.poc.training.shared.event.EnrollmentCreatedEvent;
@@ -233,13 +234,29 @@ public class EnrollmentService {
         }
 
         if (enrollment.getStatus() == EnrollmentStatus.APPROVED) {
-            trainingCatalogClient.decrementEnrolledCount(enrollment.getCourseId());
+            try {
+                trainingCatalogClient.decrementEnrolledCount(enrollment.getCourseId());
+            } catch (Exception e) {
+                log.error("Failed to decrement enrolledCount for course {} during cancel of enrollment {}",
+                        enrollment.getCourseId(), enrollmentId, e);
+            }
         }
 
         enrollment.setStatus(EnrollmentStatus.CANCELLED);
         Enrollment saved = enrollmentRepository.save(enrollment);
 
-        log.info("Cancelled enrollment: {}", saved.getId());
+        EnrollmentCancelledEvent event = EnrollmentCancelledEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(saved.getId())
+                .employeeId(saved.getEmployeeId())
+                .courseId(saved.getCourseId())
+                .build();
+
+        persistOutboxEvent("Enrollment", String.valueOf(saved.getId()), "EnrollmentCancelledEvent",
+                event, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CANCELLED);
+        log.info("Persisted EnrollmentCancelledEvent to outbox for enrollment: {}", saved.getId());
 
         return toResponse(saved);
     }
@@ -255,7 +272,7 @@ public class EnrollmentService {
                     .routingKey(routingKey)
                     .build();
             outboxEventRepository.save(outboxEvent);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to serialize {} for outbox: {}", eventType, e.getMessage());
             throw new RuntimeException("Failed to persist outbox event", e);
         }

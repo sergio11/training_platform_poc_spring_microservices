@@ -1,7 +1,7 @@
 package com.poc.training.notification.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
@@ -55,7 +55,7 @@ class NotificationServiceTest {
     void setUp() {
         try {
             lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException(e);
         }
         notificationService = new NotificationService(notificationRepository, notificationSender, processedEventRepository, outboxEventRepository, objectMapper);

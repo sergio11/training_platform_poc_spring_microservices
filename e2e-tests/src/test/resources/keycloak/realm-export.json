@@ -1,0 +1,164 @@
+{
+  "realm": "training-realm",
+  "enabled": true,
+  "displayName": "Training Platform Realm",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator role"
+      },
+      {
+        "name": "instructor",
+        "description": "Instructor role"
+      },
+      {
+        "name": "employee",
+        "description": "Employee role"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "training-catalog-client",
+      "name": "Training Catalog Service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "catalog-secret-2024",
+      "redirectUris": [],
+      "webOrigins": [],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "training-enrollment-client",
+      "name": "Enrollment Service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "enrollment-secret-2024",
+      "redirectUris": [],
+      "webOrigins": [],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "training-certification-client",
+      "name": "Certification Service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "certification-secret-2024",
+      "redirectUris": [],
+      "webOrigins": [],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "training-notification-client",
+      "name": "Notification Service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "notification-secret-2024",
+      "redirectUris": [],
+      "webOrigins": [],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "training-frontend",
+      "name": "Training Frontend",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "frontend-secret-2024",
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@training.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"],
+      "attributes": {
+        "employeeId": ["1"]
+      }
+    },
+    {
+      "username": "instructor1",
+      "enabled": true,
+      "email": "instructor1@training.com",
+      "firstName": "John",
+      "lastName": "Instructor",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "instructor1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["instructor"],
+      "attributes": {
+        "employeeId": ["2"]
+      }
+    },
+    {
+      "username": "employee1",
+      "enabled": true,
+      "email": "employee1@training.com",
+      "firstName": "Jane",
+      "lastName": "Employee",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "employee1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["employee"],
+      "attributes": {
+        "employeeId": ["3"]
+      }
+    }
+  ],
+  "defaultRoles": ["employee"]
+}

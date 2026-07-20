@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.poc.training.shared.exception.ServiceUnavailableException;
+
 import java.time.Duration;
 
 @Slf4j
@@ -46,12 +48,8 @@ public class TrainingCatalogClient {
     }
 
     public CourseDTO getCourseFallback(Long courseId, Throwable throwable) {
-        log.warn("Fallback called for getCourse with id: {}. Error: {}", courseId, throwable.getMessage());
-        return CourseDTO.builder()
-                .id(courseId)
-                .capacity(0)
-                .enrolledCount(0)
-                .build();
+        log.error("Fallback called for getCourse with id: {}. Error: {}", courseId, throwable.getMessage());
+        throw new ServiceUnavailableException("Catalog Service unavailable for course: " + courseId, throwable);
     }
 
     public void incrementEnrolledCountFallback(Long courseId, Throwable throwable) {

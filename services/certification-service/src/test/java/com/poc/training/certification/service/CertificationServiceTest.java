@@ -1,6 +1,6 @@
 package com.poc.training.certification.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.poc.training.certification.dto.CertificateResponse;
 import com.poc.training.certification.model.Certificate;
 import com.poc.training.certification.model.OutboxEvent;
