@@ -27,12 +27,12 @@ public class OutboxEventScheduler {
         for (OutboxEvent event : pendingEvents) {
             transactionTemplate.executeWithoutResult(status -> {
                 try {
-                    event.setProcessed(true);
-                    outboxEventRepository.save(event);
                     rabbitTemplate.convertAndSend(
                             RabbitMQConstants.EXCHANGE,
                             event.getRoutingKey(),
                             event.getPayload());
+                    event.setProcessed(true);
+                    outboxEventRepository.save(event);
                     log.info("Sent outbox event: {} {}", event.getEventType(), event.getAggregateId());
                 } catch (Exception e) {
                     log.error("Failed to send outbox event {}: {}", event.getId(), e.getMessage());

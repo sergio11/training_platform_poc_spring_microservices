@@ -30,8 +30,6 @@ public class OutboxEventScheduler {
         for (OutboxEvent event : pendingEvents) {
             transactionTemplate.executeWithoutResult(status -> {
                 try {
-                    event.setProcessed(true);
-                    outboxEventRepository.save(event);
                     MessageProperties props = new MessageProperties();
                     props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
                     props.setHeader("__TypeId__", resolveEventType(event.getEventType()));
@@ -41,6 +39,8 @@ public class OutboxEventScheduler {
                             RabbitMQConstants.EXCHANGE,
                             event.getRoutingKey(),
                             message);
+                    event.setProcessed(true);
+                    outboxEventRepository.save(event);
                     log.info("Sent outbox event: {} {}", event.getEventType(), event.getAggregateId());
                 } catch (Exception e) {
                     log.error("Failed to send outbox event {}: {}", event.getId(), e.getMessage());
