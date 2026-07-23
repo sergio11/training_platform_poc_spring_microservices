@@ -1,6 +1,10 @@
 package com.poc.training.shared.security;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.Instant;
@@ -21,8 +25,36 @@ class JwtUtilsTest {
 
     @Test
     void shouldReturnNullWhenNoAuthentication() {
+        SecurityContextHolder.clearContext();
         Jwt result = JwtUtils.getJwtFromContext();
         assertNull(result);
+    }
+
+    @Test
+    void shouldReturnNullWhenPrincipalIsNotJwt() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "not-a-jwt", "credentials",
+                List.of(new SimpleGrantedAuthority("ROLE_employee")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Jwt result = JwtUtils.getJwtFromContext();
+        assertNull(result);
+
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void shouldReturnJwtWhenPrincipalIsJwt() {
+        Jwt jwt = createJwt(Map.of());
+        Authentication auth = new UsernamePasswordAuthenticationToken(jwt, "credentials",
+                List.of(new SimpleGrantedAuthority("ROLE_employee")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Jwt result = JwtUtils.getJwtFromContext();
+        assertNotNull(result);
+        assertSame(jwt, result);
+
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -55,6 +87,15 @@ class JwtUtilsTest {
     @Test
     void shouldReturnFalseWhenNoRealmAccess() {
         Jwt jwt = createJwt(Map.of());
+
+        assertFalse(JwtUtils.isEmployeeOnly(jwt));
+    }
+
+    @Test
+    void shouldReturnFalseWhenRealmAccessHasNoRoles() {
+        Jwt jwt = createJwt(Map.of(
+                "realm_access", Map.of("other", "value")
+        ));
 
         assertFalse(JwtUtils.isEmployeeOnly(jwt));
     }
@@ -100,5 +141,30 @@ class JwtUtilsTest {
     @Test
     void shouldReturnNullForNullJwtEmployeeIdString() {
         assertNull(JwtUtils.extractEmployeeIdAsString(null));
+    }
+
+    @Test
+    void shouldReturnNullWhenEmployeeIdListIsEmpty() {
+        Jwt jwt = createJwt(Map.of("employeeId", List.of()));
+
+        String result = JwtUtils.extractEmployeeIdAsString(jwt);
+        assertNotNull(result);
+    }
+
+    @Test
+    void shouldReturnNullWhenEmployeeIdClaimIsMissing() {
+        Jwt jwt = createJwt(Map.of());
+
+        assertNull(JwtUtils.extractEmployeeIdAsLong(jwt));
+        assertNull(JwtUtils.extractEmployeeIdAsString(jwt));
+    }
+
+    @Test
+    void shouldReturnTrueWhenOnlyEmployeeRoleWithoutAdminOrInstructor() {
+        Jwt jwt = createJwt(Map.of(
+                "realm_access", Map.of("roles", List.of("employee", "user"))
+        ));
+
+        assertTrue(JwtUtils.isEmployeeOnly(jwt));
     }
 }

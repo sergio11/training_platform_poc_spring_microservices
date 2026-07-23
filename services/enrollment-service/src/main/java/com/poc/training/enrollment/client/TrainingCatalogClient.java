@@ -40,7 +40,7 @@ public class TrainingCatalogClient {
     @Retry(name = "catalogService")
     public void incrementEnrolledCount(Long courseId) {
         log.info("Incrementing enrolled count for course: {}", courseId);
-        webClient.post()
+        webClient.patch()
                 .uri("/api/v1/courses/{id}/enroll", courseId)
                 .retrieve()
                 .bodyToMono(Void.class)
@@ -61,7 +61,7 @@ public class TrainingCatalogClient {
     @Retry(name = "catalogService")
     public void decrementEnrolledCount(Long courseId) {
         log.info("Decrementing enrolled count for course: {}", courseId);
-        webClient.post()
+        webClient.patch()
                 .uri("/api/v1/courses/{id}/unenroll", courseId)
                 .retrieve()
                 .bodyToMono(Void.class)

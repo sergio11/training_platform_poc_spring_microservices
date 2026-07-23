@@ -221,4 +221,103 @@ class EnrollmentServiceTest {
         assertThrows(BusinessException.class, () -> enrollmentService.cancel(1L));
         verify(enrollmentRepository, never()).save(any(Enrollment.class));
     }
+
+    @Test
+    void shouldThrowExceptionWhenEmployeeNotFound() {
+        when(employeeClient.existsById(99L)).thenReturn(false);
+
+        assertThrows(BusinessException.class, () -> enrollmentService.enroll(99L, 1L));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenApprovingNotFound() {
+        when(enrollmentRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> enrollmentService.approve(99L));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCompletingNotFound() {
+        when(enrollmentRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> enrollmentService.complete(99L));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRejectingNotFound() {
+        when(enrollmentRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> enrollmentService.reject(99L));
+    }
+
+    @Test
+    void shouldRejectEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EnrollmentResponse result = enrollmentService.reject(1L);
+        assertEquals(EnrollmentStatus.REJECTED.name(), result.getStatus());
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRejectingNonPending() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.APPROVED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(BusinessException.class, () -> enrollmentService.reject(1L));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCancellingNotFound() {
+        when(enrollmentRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> enrollmentService.cancel(99L));
+    }
+
+    @Test
+    void shouldApproveWithIncrementFailureThenCompensate() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("Increment failed")).when(trainingCatalogClient).incrementEnrolledCount(1L);
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.approve(1L));
+        verify(trainingCatalogClient).decrementEnrolledCount(1L);
+    }
+
+    @Test
+    void shouldApproveWithIncrementAndDecrementBothFailing() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("Increment failed")).when(trainingCatalogClient).incrementEnrolledCount(1L);
+        doThrow(new RuntimeException("Decrement failed")).when(trainingCatalogClient).decrementEnrolledCount(1L);
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.approve(1L));
+    }
+
+    @Test
+    void shouldCancelApprovedWithDecrementFailure() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.APPROVED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("Decrement failed")).when(trainingCatalogClient).decrementEnrolledCount(1L);
+
+        EnrollmentResponse result = enrollmentService.cancel(1L);
+        assertEquals(EnrollmentStatus.CANCELLED.name(), result.getStatus());
+    }
+
+    @Test
+    void shouldThrowWhenSerializationFails() throws Exception {
+        when(employeeClient.existsById(1L)).thenReturn(true);
+        CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(0).status("ACTIVE").build();
+        when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
+        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> {
+            Enrollment e = inv.getArgument(0);
+            e.setId(1L);
+            return e;
+        });
+        when(objectMapper.writeValueAsString(any())).thenThrow(new tools.jackson.core.JacksonException("serialize error", null, null) {});
+
+        assertThrows(RuntimeException.class, () -> enrollmentService.enroll(1L, 1L));
+    }
 }

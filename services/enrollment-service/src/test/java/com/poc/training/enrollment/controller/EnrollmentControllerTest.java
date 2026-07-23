@@ -3,12 +3,15 @@ package com.poc.training.enrollment.controller;
 import com.poc.training.enrollment.dto.EnrollmentRequest;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.service.EnrollmentService;
+import com.poc.training.shared.security.JwtUtils;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,7 +20,7 @@ import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -156,5 +159,108 @@ class EnrollmentControllerTest {
         mockMvc.perform(patch("/api/v1/enrollments/1/complete"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    void shouldRejectEnrollment() throws Exception {
+        EnrollmentResponse response = EnrollmentResponse.builder()
+                .id(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .status("REJECTED")
+                .build();
+
+        when(enrollmentService.reject(1L)).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/enrollments/1/reject"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+
+    @Test
+    void shouldCancelEnrollment() throws Exception {
+        EnrollmentResponse response = EnrollmentResponse.builder()
+                .id(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .status("CANCELLED")
+                .build();
+
+        when(enrollmentService.findById(1L)).thenReturn(response);
+        when(enrollmentService.cancel(1L)).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/enrollments/1/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void shouldReturn400ForInvalidRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/enrollments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherEnrollments() throws Exception {
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/enrollments").param("employeeId", "2"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherEnrollmentById() throws Exception {
+        EnrollmentResponse response = EnrollmentResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).status("PENDING").build();
+        when(enrollmentService.findById(1L)).thenReturn(response);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/enrollments/1"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldDenyEmployeeEnrollingForOther() throws Exception {
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(post("/api/v1/enrollments")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"employeeId\":2,\"courseId\":1}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldDenyEmployeeCancellingOtherEnrollment() throws Exception {
+        EnrollmentResponse response = EnrollmentResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).status("APPROVED").build();
+        when(enrollmentService.findById(1L)).thenReturn(response);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(patch("/api/v1/enrollments/1/cancel"))
+                    .andExpect(status().isForbidden());
+        }
     }
 }

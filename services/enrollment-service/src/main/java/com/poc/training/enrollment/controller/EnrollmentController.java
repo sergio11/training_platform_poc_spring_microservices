@@ -59,10 +59,10 @@ public class EnrollmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('employee')")
+    @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")
     public ResponseEntity<EnrollmentResponse> enroll(@Valid @RequestBody EnrollmentRequest request) {
         Jwt jwt = JwtUtils.getJwtFromContext();
-        if (jwt != null && !request.getEmployeeId().equals(JwtUtils.extractEmployeeIdAsLong(jwt))) {
+        if (JwtUtils.isEmployeeOnly(jwt) && !request.getEmployeeId().equals(JwtUtils.extractEmployeeIdAsLong(jwt))) {
             throw new AccessDeniedException("Employees can only enroll themselves");
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(

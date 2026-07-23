@@ -15,22 +15,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("E2E: Asynchronous Events via RabbitMQ")
 class AsyncEventE2ETest extends BaseE2ETest {
 
-    private static Long courseId;
-    private static Long employeeId;
-
-    @BeforeAll
-    static void setupTestData() {
-        String token = adminToken();
-        courseId = createCourse(token, "Async Event Course", 20);
-        employeeId = createEmployee(token, "EMP-ASYNC-001");
-    }
-
     @Test
     @Order(1)
     @DisplayName("Enrollment creation triggers ENROLLMENT_CREATED notification")
     void enrollmentCreatedTriggersNotification() {
-        Map<?, ?> enroll = createEnrollment(employeeToken(), employeeId, courseId);
-        Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
+        String token = adminToken();
+        Long course = createCourse(token, "Async Notif Course", 20);
+        Long emp = createEmployee(token, "EMP-ASYNC-001");
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
 
         Awaitility.await()
                 .atMost(15, TimeUnit.SECONDS)
@@ -38,8 +30,8 @@ class AsyncEventE2ETest extends BaseE2ETest {
                 .untilAsserted(() -> {
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                                    .queryParam("recipientId", employeeId).build())
-                            .header("Authorization", "Bearer " + employeeToken())
+                                    .queryParam("recipientId", emp).build())
+                            .header("Authorization", "Bearer " + token)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -56,7 +48,10 @@ class AsyncEventE2ETest extends BaseE2ETest {
     @Order(2)
     @DisplayName("Enrollment approval triggers ENROLLMENT_APPROVED notification")
     void enrollmentApprovedTriggersNotification() {
-        Map<?, ?> enroll = createEnrollment(employeeToken(), employeeId, courseId);
+        String token = adminToken();
+        Long course = createCourse(token, "Async Approve Course", 10);
+        Long emp = createEmployee(token, "EMP-ASYNC-002");
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
         approveEnrollment(instructorToken(), enrollId);
 
@@ -66,8 +61,8 @@ class AsyncEventE2ETest extends BaseE2ETest {
                 .untilAsserted(() -> {
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                                    .queryParam("recipientId", employeeId).build())
-                            .header("Authorization", "Bearer " + employeeToken())
+                                    .queryParam("recipientId", emp).build())
+                            .header("Authorization", "Bearer " + token)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -85,7 +80,7 @@ class AsyncEventE2ETest extends BaseE2ETest {
         String token = adminToken();
         Long course = createCourse(token, "Complete Notif Course", 10);
         Long emp = createEmployee(token, "EMP-COMP-NOTIF");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
         approveEnrollment(token, enrollId);
         completeEnrollment(token, enrollId);
@@ -115,7 +110,7 @@ class AsyncEventE2ETest extends BaseE2ETest {
         String token = adminToken();
         Long course = createCourse(token, "Cert Gen Course", 10);
         Long emp = createEmployee(token, "EMP-CERT-GEN");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
         approveEnrollment(token, enrollId);
 
@@ -145,7 +140,7 @@ class AsyncEventE2ETest extends BaseE2ETest {
         String token = adminToken();
         Long course = createCourse(token, "Cert Notif Course", 10);
         Long emp = createEmployee(token, "EMP-CERT-NOTIF");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
         approveEnrollment(token, enrollId);
         completeEnrollment(token, enrollId);
@@ -175,7 +170,7 @@ class AsyncEventE2ETest extends BaseE2ETest {
         String token = adminToken();
         Long course = createCourse(token, "Idempotent Notif", 10);
         Long emp = createEmployee(token, "EMP-IDEMP");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
 
         waitForAsyncProcessing(() -> {
             Map<?, ?> page = notificationClient.get()
@@ -200,7 +195,7 @@ class AsyncEventE2ETest extends BaseE2ETest {
         String token = adminToken();
         Long course = createCourse(token, "Idempotent Cert", 10);
         Long emp = createEmployee(token, "EMP-IDEMP-CERT");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
         approveEnrollment(token, enrollId);
         completeEnrollment(token, enrollId);
@@ -221,12 +216,14 @@ class AsyncEventE2ETest extends BaseE2ETest {
     @Order(8)
     @DisplayName("Get notifications by recipient returns paginated results")
     void getNotificationsByRecipient() {
+        String token = adminToken();
+        Long emp = createEmployee(token, "EMP-NOTIF-PAGE");
         Map<?, ?> page = notificationClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                        .queryParam("recipientId", employeeId)
+                        .queryParam("recipientId", emp)
                         .queryParam("page", 0)
                         .queryParam("size", 5).build())
-                .header("Authorization", "Bearer " + employeeToken())
+                .header("Authorization", "Bearer " + token)
                 .retrieve().bodyToMono(Map.class).block();
 
         assertThat(page).isNotNull();

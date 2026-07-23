@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -108,6 +109,7 @@ class EnrollmentFlowIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional
     void shouldFindExistingEnrollmentWithLock() {
         enrollmentRepository.save(Enrollment.builder()
                 .employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build());
@@ -119,6 +121,7 @@ class EnrollmentFlowIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional
     void shouldReturnEmptyWhenNoActiveEnrollment() {
         var existing = enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(
                 1L, 1L, java.util.List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED));

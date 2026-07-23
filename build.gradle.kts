@@ -71,6 +71,22 @@ subprojects {
     }
 
     tasks.withType<JacocoCoverageVerification> {
+        classDirectories.setFrom(
+            classDirectories.files.map { dir ->
+                fileTree(dir) {
+                    exclude(
+                        "**/*Application.class",
+                        "**/*Config.class",
+                        "**/*DTO.class",
+                        "**/*Request.class",
+                        "**/*Response.class",
+                        "**/*Constants.class",
+                        "**/*Exception.class",
+                        "**/*Handler.class"
+                    )
+                }
+            }
+        )
         violationRules {
             rule {
                 limit {

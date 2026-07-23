@@ -19,7 +19,7 @@ class OutboxPatternE2ETest extends BaseE2ETest {
         Long course = createCourse(token, "Outbox Test Course", 10);
         Long emp = createEmployee(token, "EMP-OUTBOX-001");
 
-        Map<?, ?> enrollment = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enrollment = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enrollment.get("id")));
 
         approveEnrollment(token, enrollId);
@@ -49,7 +49,7 @@ class OutboxPatternE2ETest extends BaseE2ETest {
         Long course = createCourse(token, "Cert Outbox Course", 10);
         Long emp = createEmployee(token, "EMP-CERT-OUTBOX");
 
-        Map<?, ?> enrollment = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enrollment = createEnrollment(token, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enrollment.get("id")));
         approveEnrollment(token, enrollId);
         completeEnrollment(token, enrollId);

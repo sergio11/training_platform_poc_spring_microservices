@@ -2,11 +2,14 @@ package com.poc.training.notification.controller;
 
 import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.service.NotificationService;
+import com.poc.training.shared.security.JwtUtils;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,7 +19,7 @@ import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -110,5 +113,36 @@ class NotificationControllerTest {
         mockMvc.perform(get("/api/v1/notifications/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Test notification"));
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherNotifications() throws Exception {
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/notifications").param("recipientId", "2"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherNotificationById() throws Exception {
+        NotificationResponse response = NotificationResponse.builder()
+                .id(1L).recipientId(2L).type("ENROLLMENT_CREATED")
+                .message("Test notification").status("SENT").build();
+        when(notificationService.findById(1L)).thenReturn(response);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/notifications/1"))
+                    .andExpect(status().isForbidden());
+        }
     }
 }

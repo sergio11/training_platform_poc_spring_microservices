@@ -5,6 +5,7 @@ import com.poc.training.certification.repository.CertificateRepository;
 import com.poc.training.certification.service.CertificationService;
 import com.poc.training.shared.event.CertificateGeneratedEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
+import com.poc.training.testsupport.AbstractIntegrationTest;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,45 +13,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Testcontainers
 @ActiveProfiles("test")
 @Tag("integration")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CertificationFlowIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("training_certification_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @Container
-    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
-            .withStartupTimeout(Duration.ofSeconds(120));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
-        registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
-    }
+class CertificationFlowIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

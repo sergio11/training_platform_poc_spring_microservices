@@ -66,7 +66,7 @@ public class CertificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "course.completed")
+    @RabbitListener(queues = com.poc.training.certification.config.RabbitMQConfig.QUEUE_COURSE_COMPLETED)
     public void handleCourseCompleted(CourseCompletedEvent event) {
         log.info("Received CourseCompletedEvent for enrollment: {}", event.getEnrollmentId());
 

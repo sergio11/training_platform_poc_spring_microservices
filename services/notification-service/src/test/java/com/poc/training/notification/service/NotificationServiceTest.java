@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
@@ -247,5 +248,190 @@ class NotificationServiceTest {
                 n.getRecipientId().equals(1L)
         ));
         verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void shouldSkipEnrollmentApprovedWhenAlreadyProcessed() {
+        EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleEnrollmentApproved(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipCertificateGeneratedWhenAlreadyProcessed() {
+        CertificateGeneratedEvent event = CertificateGeneratedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("certification-service")
+                .certificateId(1L)
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .certificateNumber("CERT-12345")
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleCertificateGenerated(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipEnrollmentRejectedWhenAlreadyProcessed() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleEnrollmentRejected(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipEnrollmentCancelledWhenAlreadyProcessed() {
+        EnrollmentCancelledEvent event = EnrollmentCancelledEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleEnrollmentCancelled(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipCourseCompletedWhenAlreadyProcessed() {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleCourseCompleted(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipNotificationOnDataIntegrityViolation() {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("Duplicate key"))
+                .when(processedEventRepository).save(any(ProcessedEvent.class));
+
+        notificationService.handleEnrollmentCreated(event);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+        verify(notificationSender, never()).send(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipWhenNotificationAlreadyExists() {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        when(notificationRepository.existsByReferenceIdAndReferenceTypeAndType(
+                anyString(), anyString(), any(NotificationType.class))).thenReturn(true);
+
+        notificationService.handleEnrollmentCreated(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(argThat(n -> n instanceof Notification));
+    }
+
+    @Test
+    void shouldHandleJacksonExceptionInPersistOutboxEvent() throws JacksonException {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+        when(objectMapper.writeValueAsString(any())).thenThrow(mock(JacksonException.class));
+
+        notificationService.handleEnrollmentCreated(event);
+
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(any(Notification.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void shouldHandleEnrollmentCreatedWhenAlreadyProcessed() {
+        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleEnrollmentCreated(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
     }
 }

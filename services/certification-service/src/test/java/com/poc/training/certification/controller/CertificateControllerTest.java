@@ -2,11 +2,15 @@ package com.poc.training.certification.controller;
 
 import com.poc.training.certification.dto.CertificateResponse;
 import com.poc.training.certification.service.CertificationService;
+import com.poc.training.shared.security.JwtUtils;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,7 +20,7 @@ import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -124,5 +128,60 @@ class CertificateControllerTest {
         mockMvc.perform(get("/api/v1/certificates/number/CERT-001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.certificateNumber").value("CERT-001"));
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherCertificates() throws Exception {
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/certificates").param("employeeId", "2"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherCertificateById() throws Exception {
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findById(1L)).thenReturn(c);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/certificates/1"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldDenyEmployeeViewingOtherCertificateByNumber() throws Exception {
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findByCertificateNumber("CERT-001")).thenReturn(c);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/certificates/number/CERT-001"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldReturn400WhenSortByIsInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/certificates")
+                        .param("employeeId", "1")
+                        .param("sortBy", "invalidField"))
+                .andExpect(status().isBadRequest());
     }
 }

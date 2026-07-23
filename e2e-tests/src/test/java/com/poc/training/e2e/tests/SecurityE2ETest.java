@@ -22,7 +22,7 @@ class SecurityE2ETest extends BaseE2ETest {
         String token = adminToken();
         courseId = createCourse(token, "Security Test Course", 20);
         employeeId = createEmployee(token, "EMP-SEC-001");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), employeeId, courseId);
+        Map<?, ?> enroll = createEnrollment(token, employeeId, courseId);
         enrollmentId = Long.valueOf(String.valueOf(enroll.get("id")));
     }
 
@@ -73,7 +73,7 @@ class SecurityE2ETest extends BaseE2ETest {
         String adminTok = adminToken();
         Long course = createCourse(adminTok, "Approve Test", 10);
         Long emp = createEmployee(adminTok, "EMP-APPROVE");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(adminTok, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
 
         enrollmentClient.patch()
@@ -130,12 +130,12 @@ class SecurityE2ETest extends BaseE2ETest {
         String adminTok = adminToken();
         Long course = createCourse(adminTok, "Cancel Own", 10);
         Long emp = createEmployee(adminTok, "EMP-CANCEL-OWN");
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(adminTok, emp, course);
         Long enrollId = Long.valueOf(String.valueOf(enroll.get("id")));
 
         enrollmentClient.patch()
                 .uri("/api/v1/enrollments/{id}/cancel", enrollId)
-                .header("Authorization", "Bearer " + employeeToken())
+                .header("Authorization", "Bearer " + adminTok)
                 .retrieve().toBodilessEntity().block();
 
         Map<?, ?> result = enrollmentClient.get()

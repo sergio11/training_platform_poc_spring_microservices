@@ -3,41 +3,29 @@ package com.poc.training.catalog;
 import com.poc.training.catalog.model.Course;
 import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.repository.CourseRepository;
+import com.poc.training.testsupport.AbstractIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Testcontainers
 @ActiveProfiles("test")
 @Tag("integration")
-class TrainingCatalogServiceIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("training_catalog_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class TrainingCatalogServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private CourseRepository courseRepository;
+
+    @BeforeEach
+    void setUp() {
+        courseRepository.deleteAll();
+    }
 
     @Test
     void contextLoads() {

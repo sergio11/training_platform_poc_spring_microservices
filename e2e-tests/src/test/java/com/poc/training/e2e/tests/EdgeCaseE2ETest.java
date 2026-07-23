@@ -36,7 +36,7 @@ class EdgeCaseE2ETest extends BaseE2ETest {
             executor.submit(() -> {
                 try {
                     Long course = createCourse(token, "Concurrent Course " + idx, 10);
-                    createEnrollment(employeeToken(), emp, course);
+                    createEnrollment(token, emp, course);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
@@ -62,7 +62,8 @@ class EdgeCaseE2ETest extends BaseE2ETest {
         Long emp1 = createEmployee(token, "EMP-FULL-001");
         Long emp2 = createEmployee(token, "EMP-FULL-002");
 
-        createEnrollment(token, emp1, course);
+        Map<?, ?> firstEnroll = createEnrollment(token, emp1, course);
+        approveEnrollment(token, Long.valueOf(String.valueOf(firstEnroll.get("id"))));
 
         assertThatThrownBy(() -> createEnrollment(token, emp2, course))
                 .isInstanceOf(WebClientResponseException.class)

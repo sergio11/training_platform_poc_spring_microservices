@@ -53,7 +53,7 @@ class CourseManagementE2ETest extends BaseE2ETest {
                 .retrieve().bodyToMono(Map.class).block();
 
         assertThat(course).isNotNull();
-        assertThat(course.get("id")).isEqualTo(courseId);
+        assertThat(course.get("id")).isEqualTo(courseId.intValue());
         assertThat(course.get("title")).isEqualTo("Admin Created Course");
     }
 

@@ -213,4 +213,70 @@ class CourseControllerTest {
         mockMvc.perform(patch("/api/v1/courses/1/enroll"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void shouldReturnActiveCourses() throws Exception {
+        CourseResponse response = CourseResponse.builder()
+                .id(1L)
+                .title("Java Basics")
+                .instructor("John")
+                .capacity(30)
+                .enrolledCount(0)
+                .status("ACTIVE")
+                .build();
+
+        when(courseService.findActiveCourses(any())).thenReturn(new PageImpl<>(Arrays.asList(response)));
+
+        mockMvc.perform(get("/api/v1/courses/active"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].title").value("Java Basics"));
+    }
+
+    @Test
+    void shouldUnenrollFromCourse() throws Exception {
+        mockMvc.perform(patch("/api/v1/courses/1/unenroll"))
+                .andExpect(status().isOk());
+        verify(courseService).decrementEnrolledCount(1L);
+    }
+
+    @Test
+    void shouldReturn400WhenNoSeatsToDecrement() throws Exception {
+        doThrow(new BusinessException("Cannot decrement enrolled count for course: 1. Count is already 0."))
+                .when(courseService).decrementEnrolledCount(1L);
+        mockMvc.perform(patch("/api/v1/courses/1/unenroll"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldMarkCourseAsCompleted() throws Exception {
+        CourseResponse response = CourseResponse.builder()
+                .id(1L)
+                .title("Java Basics")
+                .instructor("John")
+                .capacity(30)
+                .enrolledCount(0)
+                .status("COMPLETED")
+                .build();
+
+        when(courseService.markAsCompleted(1L)).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/courses/1/complete"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    void shouldReturn400WhenMarkingNonActiveCourseAsCompleted() throws Exception {
+        doThrow(new BusinessException("Cannot complete course in status: INACTIVE. Expected: ACTIVE"))
+                .when(courseService).markAsCompleted(1L);
+        mockMvc.perform(patch("/api/v1/courses/1/complete"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenSortByIsInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/courses")
+                        .param("sortBy", "invalidField"))
+                .andExpect(status().isBadRequest());
+    }
 }

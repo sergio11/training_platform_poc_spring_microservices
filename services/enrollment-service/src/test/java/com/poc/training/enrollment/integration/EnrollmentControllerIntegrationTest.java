@@ -99,7 +99,9 @@ class EnrollmentControllerIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/enrollments")
                         .param("employeeId", "200")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                            .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))
+                            .jwt(jwt -> jwt.claim("realm_access", java.util.Map.of("roles", java.util.List.of("employee"))))))
                 .andExpect(status().isForbidden());
     }
 }

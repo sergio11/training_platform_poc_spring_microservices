@@ -134,6 +134,31 @@ class CertificationServiceTest {
     }
 
     @Test
+    void shouldNotThrowWhenSerializationFails() throws Exception {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
+        when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
+        when(certificateRepository.save(any(Certificate.class))).thenAnswer(inv -> {
+            Certificate c = inv.getArgument(0);
+            c.setId(1L);
+            return c;
+        });
+        when(objectMapper.writeValueAsString(any())).thenThrow(new tools.jackson.core.JacksonException("serialize error", null, null) {});
+
+        assertDoesNotThrow(() -> certificationService.handleCourseCompleted(event));
+        verify(certificateRepository).save(any(Certificate.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+    }
+
+    @Test
     void shouldThrowOnDataIntegrityViolation() {
         CourseCompletedEvent event = CourseCompletedEvent.builder()
                 .eventId(UUID.randomUUID().toString())

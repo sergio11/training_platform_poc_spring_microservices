@@ -74,7 +74,7 @@ public class EnrollmentService {
 
         CourseDTO course = trainingCatalogClient.getCourse(courseId);
 
-        List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED);
+        List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED, EnrollmentStatus.COMPLETED);
         List<Enrollment> existing = enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(
                 employeeId, courseId, activeStatuses);
 

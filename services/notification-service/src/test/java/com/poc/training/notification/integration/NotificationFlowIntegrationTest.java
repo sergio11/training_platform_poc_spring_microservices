@@ -4,6 +4,7 @@ import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.shared.event.*;
+import com.poc.training.testsupport.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Tag;
@@ -11,14 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.test.context.ActiveProfiles;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -26,29 +21,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Testcontainers
+@ActiveProfiles("test")
 @Tag("integration")
-class NotificationFlowIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("test_notification")
-            .withUsername("test")
-            .withPassword("test");
-
-    @Container
-    static RabbitMQContainer rabbitMQ = new RabbitMQContainer("rabbitmq:4-management-alpine")
-            .withStartupTimeout(Duration.ofSeconds(120));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        registry.add("spring.rabbitmq.host", rabbitMQ::getHost);
-        registry.add("spring.rabbitmq.port", rabbitMQ::getAmqpPort);
-    }
+class NotificationFlowIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private NotificationRepository notificationRepository;

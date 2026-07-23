@@ -152,4 +152,92 @@ class CourseServiceTest {
 
         assertThrows(BusinessException.class, () -> courseService.markAsCompleted(1L));
     }
+
+    @Test
+    void shouldSearchByStatusAndTitle() {
+        when(courseRepository.findByStatusAndTitleContainingIgnoreCase(eq(CourseStatus.ACTIVE), eq("Java"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(
+                        Course.builder().id(1L).title("Java Basics").status(CourseStatus.ACTIVE).instructor("John").capacity(30).enrolledCount(0).build()
+                )));
+        var result = courseService.search("Java", null, CourseStatus.ACTIVE, PageRequest.of(0, 10));
+        assertEquals(1, result.getContent().size());
+        assertEquals("Java Basics", result.getContent().get(0).getTitle());
+    }
+
+    @Test
+    void shouldSearchByStatusAndInstructor() {
+        when(courseRepository.findByStatusAndInstructorContainingIgnoreCase(eq(CourseStatus.ACTIVE), eq("John"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(
+                        Course.builder().id(1L).title("Java Basics").status(CourseStatus.ACTIVE).instructor("John").capacity(30).enrolledCount(0).build()
+                )));
+        var result = courseService.search(null, "John", CourseStatus.ACTIVE, PageRequest.of(0, 10));
+        assertEquals(1, result.getContent().size());
+        assertEquals("John", result.getContent().get(0).getInstructor());
+    }
+
+    @Test
+    void shouldSearchByTitleAndInstructor() {
+        when(courseRepository.findByTitleContainingIgnoreCaseAndInstructorContainingIgnoreCase(eq("Java"), eq("John"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(
+                        Course.builder().id(1L).title("Java Basics").status(CourseStatus.ACTIVE).instructor("John").capacity(30).enrolledCount(0).build()
+                )));
+        var result = courseService.search("Java", "John", null, PageRequest.of(0, 10));
+        assertEquals(1, result.getContent().size());
+    }
+
+    @Test
+    void shouldSearchByInstructorOnly() {
+        when(courseRepository.findByInstructorContainingIgnoreCase(eq("John"), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(
+                        Course.builder().id(1L).title("Java Basics").status(CourseStatus.ACTIVE).instructor("John").capacity(30).enrolledCount(0).build()
+                )));
+        var result = courseService.search(null, "John", null, PageRequest.of(0, 10));
+        assertEquals(1, result.getContent().size());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUpdatingNonExistentCourse() {
+        when(courseRepository.findById(99L)).thenReturn(Optional.empty());
+        CourseRequest request = new CourseRequest();
+        request.setTitle("New Title");
+        request.setInstructor("New");
+        request.setCapacity(40);
+        assertThrows(ResourceNotFoundException.class, () -> courseService.update(99L, request));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCapacityLessThanEnrolledCount() {
+        Course existing = Course.builder().id(1L).title("Java Basics").instructor("John").capacity(20).enrolledCount(15).status(CourseStatus.ACTIVE).build();
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(existing));
+        CourseRequest request = new CourseRequest();
+        request.setTitle("Java Basics");
+        request.setInstructor("John");
+        request.setCapacity(10);
+        assertThrows(BusinessException.class, () -> courseService.update(1L, request));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenDeactivatingNonExistentCourse() {
+        when(courseRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> courseService.deactivate(99L));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenMarkingNonExistentCourseAsCompleted() {
+        when(courseRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> courseService.markAsCompleted(99L));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenDecrementingCountAtZero() {
+        when(courseRepository.decrementEnrolledCount(1L)).thenReturn(0);
+        assertThrows(BusinessException.class, () -> courseService.decrementEnrolledCount(1L));
+    }
+
+    @Test
+    void shouldDecrementEnrolledCountSuccessfully() {
+        when(courseRepository.decrementEnrolledCount(1L)).thenReturn(1);
+        courseService.decrementEnrolledCount(1L);
+        verify(courseRepository, times(1)).decrementEnrolledCount(1L);
+    }
 }

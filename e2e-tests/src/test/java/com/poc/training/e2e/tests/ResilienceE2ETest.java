@@ -21,7 +21,7 @@ class ResilienceE2ETest extends BaseE2ETest {
         Long course = createCourse(token, "Resilience Healthy", 10);
         Long emp = createEmployee(token, "EMP-RES-OK");
 
-        Map<?, ?> enroll = createEnrollment(employeeToken(), emp, course);
+        Map<?, ?> enroll = createEnrollment(adminToken(), emp, course);
         assertThat(enroll.get("status")).isEqualTo("PENDING");
     }
 

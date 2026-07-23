@@ -51,7 +51,7 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
     @Order(3)
     @DisplayName("Employee enrolls in course")
     void shouldEnrollInCourse() {
-        Map<?, ?> enrollment = createEnrollment(employeeToken(), employeeId, courseId);
+        Map<?, ?> enrollment = createEnrollment(adminToken(), employeeId, courseId);
         enrollmentId = Long.valueOf(String.valueOf(enrollment.get("id")));
         assertThat(enrollmentId).isNotNull();
         assertThat(enrollment.get("status")).isEqualTo("PENDING");
@@ -100,8 +100,8 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
 
             Map<?, ?> cert = (Map<?, ?>) content.get(0);
             assertThat(cert.get("certificateNumber")).asString().startsWith("CERT-");
-            assertThat(cert.get("employeeId")).isEqualTo(employeeId);
-            assertThat(cert.get("courseId")).isEqualTo(courseId);
+            assertThat(Long.valueOf(String.valueOf(cert.get("employeeId")))).isEqualTo(employeeId);
+            assertThat(Long.valueOf(String.valueOf(cert.get("courseId")))).isEqualTo(courseId);
         });
     }
 
@@ -112,7 +112,7 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
         Map<?, ?> notifPage = notificationClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                         .queryParam("recipientId", employeeId).build())
-                .header("Authorization", "Bearer " + employeeToken())
+                .header("Authorization", "Bearer " + adminToken())
                 .retrieve().bodyToMono(Map.class).block();
 
         assertThat(notifPage).isNotNull();
@@ -133,7 +133,7 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
     @DisplayName("Cannot enroll in same course twice (duplicate prevention)")
     void shouldPreventDuplicateEnrollment() {
         assertThatThrownBy(() ->
-                createEnrollment(employeeToken(), employeeId, courseId))
+                createEnrollment(adminToken(), employeeId, courseId))
                 .isInstanceOf(WebClientResponseException.class)
                 .satisfies(e -> {
                     var ex = (WebClientResponseException) e;
@@ -148,7 +148,8 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
         String token = adminToken();
         Long noSeatsCourse = createCourse(token, "No Seats Course", 1);
         Long emp2 = createEmployee(token, "EMP-E2E-NOSEATS");
-        createEnrollment(token, emp2, noSeatsCourse);
+        Map<?, ?> firstEnroll = createEnrollment(token, emp2, noSeatsCourse);
+        approveEnrollment(token, Long.valueOf(String.valueOf(firstEnroll.get("id"))));
 
         Long emp3 = createEmployee(token, "EMP-E2E-NOSEATS-2");
         assertThatThrownBy(() -> createEnrollment(token, emp3, noSeatsCourse))

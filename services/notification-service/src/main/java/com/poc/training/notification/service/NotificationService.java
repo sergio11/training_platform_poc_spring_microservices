@@ -64,7 +64,7 @@ public class NotificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "enrollment.created")
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_ENROLLMENT_CREATED)
     public void handleEnrollmentCreated(EnrollmentCreatedEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
 
@@ -83,7 +83,7 @@ public class NotificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "enrollment.approved")
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_ENROLLMENT_APPROVED)
     public void handleEnrollmentApproved(EnrollmentApprovedEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
 
@@ -102,7 +102,7 @@ public class NotificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "certificate.generated")
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_CERTIFICATE_GENERATED)
     public void handleCertificateGenerated(CertificateGeneratedEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
 
@@ -121,7 +121,7 @@ public class NotificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "enrollment.rejected")
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_ENROLLMENT_REJECTED)
     public void handleEnrollmentRejected(EnrollmentRejectedEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
 
@@ -140,7 +140,7 @@ public class NotificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "enrollment.cancelled")
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_ENROLLMENT_CANCELLED)
     public void handleEnrollmentCancelled(EnrollmentCancelledEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
 
@@ -159,7 +159,7 @@ public class NotificationService {
     }
 
     @Transactional
-    @RabbitListener(queues = "course.completed")
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_COURSE_COMPLETED)
     public void handleCourseCompleted(CourseCompletedEvent event) {
         if (isAlreadyProcessed(event.getEventId())) return;
 

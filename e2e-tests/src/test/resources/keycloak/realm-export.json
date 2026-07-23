@@ -45,7 +45,24 @@
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "employeeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "employeeId",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "employeeId",
+            "jsonType": "String",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
     },
     {
       "clientId": "training-enrollment-client",
@@ -59,7 +76,24 @@
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "employeeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "employeeId",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "employeeId",
+            "jsonType": "String",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
     },
     {
       "clientId": "training-certification-client",
@@ -73,7 +107,24 @@
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "employeeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "employeeId",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "employeeId",
+            "jsonType": "String",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
     },
     {
       "clientId": "training-notification-client",
@@ -87,7 +138,24 @@
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "employeeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "employeeId",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "employeeId",
+            "jsonType": "String",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
     },
     {
       "clientId": "training-frontend",

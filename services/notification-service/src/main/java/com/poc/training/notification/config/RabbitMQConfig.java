@@ -1,14 +1,22 @@
 package com.poc.training.notification.config;
 
+import com.poc.training.shared.converter.Jackson3JsonMessageConverter;
 import com.poc.training.shared.event.RabbitMQConstants;
 import org.springframework.amqp.core.*;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
+
+    public static final String QUEUE_NOTIFICATION_SENT = "notification.notification.sent";
+    public static final String QUEUE_ENROLLMENT_CREATED = "notification.enrollment.created";
+    public static final String QUEUE_ENROLLMENT_APPROVED = "notification.enrollment.approved";
+    public static final String QUEUE_CERTIFICATE_GENERATED = "notification.certificate.generated";
+    public static final String QUEUE_ENROLLMENT_REJECTED = "notification.enrollment.rejected";
+    public static final String QUEUE_ENROLLMENT_CANCELLED = "notification.enrollment.cancelled";
+    public static final String QUEUE_COURSE_COMPLETED = "notification.course.completed";
 
     @Bean
     public TopicExchange trainingExchange() {
@@ -17,7 +25,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue notificationSentQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_NOTIFICATION_SENT)
+        return QueueBuilder.durable(QUEUE_NOTIFICATION_SENT)
                 .deadLetterExchange("")
                 .deadLetterRoutingKey("notification.dlq")
                 .build();
@@ -30,7 +38,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue enrollmentCreatedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_CREATED)
+        return QueueBuilder.durable(QUEUE_ENROLLMENT_CREATED)
                 .deadLetterExchange("")
                 .deadLetterRoutingKey("notification.dlq")
                 .build();
@@ -38,7 +46,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue enrollmentApprovedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_APPROVED)
+        return QueueBuilder.durable(QUEUE_ENROLLMENT_APPROVED)
                 .deadLetterExchange("")
                 .deadLetterRoutingKey("notification.dlq")
                 .build();
@@ -46,7 +54,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue certificateGeneratedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_CERTIFICATE_GENERATED)
+        return QueueBuilder.durable(QUEUE_CERTIFICATE_GENERATED)
                 .deadLetterExchange("")
                 .deadLetterRoutingKey("notification.dlq")
                 .build();
@@ -54,7 +62,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue enrollmentRejectedQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_REJECTED)
+        return QueueBuilder.durable(QUEUE_ENROLLMENT_REJECTED)
                 .deadLetterExchange("")
                 .deadLetterRoutingKey("notification.dlq")
                 .build();
@@ -62,7 +70,15 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue enrollmentCancelledQueue() {
-        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_CANCELLED)
+        return QueueBuilder.durable(QUEUE_ENROLLMENT_CANCELLED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
+    public Queue courseCompletedQueue() {
+        return QueueBuilder.durable(QUEUE_COURSE_COMPLETED)
                 .deadLetterExchange("")
                 .deadLetterRoutingKey("notification.dlq")
                 .build();
@@ -94,6 +110,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding courseCompletedBinding(Queue courseCompletedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(courseCompletedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_COURSE_COMPLETED);
+    }
+
+    @Bean
     public Binding notificationSentBinding(Queue notificationSentQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(notificationSentQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT);
     }
@@ -105,6 +126,6 @@ public class RabbitMQConfig {
 
     @Bean
     public MessageConverter jsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+        return new Jackson3JsonMessageConverter();
     }
 }

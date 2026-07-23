@@ -100,4 +100,82 @@ class EmployeeServiceTest {
         assertFalse(e.isActive());
         verify(employeeRepository).save(e);
     }
+
+    @Test
+    void shouldFindByEmployeeNumber() {
+        Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
+        when(employeeRepository.findByEmployeeNumber("EMP001")).thenReturn(Optional.of(e));
+
+        EmployeeResponse result = employeeService.findByEmployeeNumber("EMP001");
+        assertEquals("Alice", result.getFullName());
+        assertEquals("EMP001", result.getEmployeeNumber());
+    }
+
+    @Test
+    void shouldThrowWhenEmployeeNumberNotFound() {
+        when(employeeRepository.findByEmployeeNumber("NOTEXIST")).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> employeeService.findByEmployeeNumber("NOTEXIST"));
+    }
+
+    @Test
+    void shouldReturnExistsByIdTrue() {
+        when(employeeRepository.existsById(1L)).thenReturn(true);
+        assertTrue(employeeService.existsById(1L));
+    }
+
+    @Test
+    void shouldReturnExistsByIdFalse() {
+        when(employeeRepository.existsById(99L)).thenReturn(false);
+        assertFalse(employeeService.existsById(99L));
+    }
+
+    @Test
+    void shouldUpdateEmployee() {
+        Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com")
+                .department("Eng").position("Dev").active(true).build();
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(employeeRepository.save(any(Employee.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP001")
+                .fullName("Alice Updated")
+                .email("alice-new@test.com")
+                .department("Sales")
+                .position("Manager")
+                .build();
+
+        EmployeeResponse result = employeeService.update(1L, request);
+        assertEquals("Alice Updated", result.getFullName());
+        assertEquals("alice-new@test.com", result.getEmail());
+        assertEquals("Sales", result.getDepartment());
+        assertEquals("Manager", result.getPosition());
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingNonExistentEmployee() {
+        when(employeeRepository.findById(99L)).thenReturn(Optional.empty());
+
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP001")
+                .fullName("Ghost")
+                .email("ghost@test.com")
+                .build();
+
+        assertThrows(ResourceNotFoundException.class, () -> employeeService.update(99L, request));
+    }
+
+    @Test
+    void shouldThrowWhenEmailAlreadyExists() {
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP003")
+                .fullName("Charlie")
+                .email("existing@test.com")
+                .build();
+
+        when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
+        when(employeeRepository.findByEmail("existing@test.com")).thenReturn(
+                Optional.of(Employee.builder().id(1L).build()));
+
+        assertThrows(BusinessException.class, () -> employeeService.create(request));
+    }
 }
