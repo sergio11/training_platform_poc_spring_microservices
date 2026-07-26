@@ -111,7 +111,14 @@ class CertificationServiceTest {
         certificationService.handleCourseCompleted(event);
 
         verify(certificateRepository).save(any(Certificate.class));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
+        verify(outboxEventRepository).save(outboxEventCaptor.capture());
+
+        OutboxEvent outboxEvent = outboxEventCaptor.getValue();
+        assertEquals("Certificate", outboxEvent.getAggregateType());
+        assertEquals("1", outboxEvent.getAggregateId());
+        assertEquals("CertificateGeneratedEvent", outboxEvent.getEventType());
+        assertEquals("certificate.generated", outboxEvent.getRoutingKey());
+        assertEquals("{}", outboxEvent.getPayload());
     }
 
     @Test

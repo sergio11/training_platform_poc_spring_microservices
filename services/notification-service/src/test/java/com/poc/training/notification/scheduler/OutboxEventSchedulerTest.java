@@ -77,8 +77,8 @@ class OutboxEventSchedulerTest {
                 .when(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString());
 
         assertThrows(RuntimeException.class, () -> outboxEventScheduler.processPendingEvents());
-        verify(outboxEventRepository).save(event);
-        assertTrue(event.isProcessed());
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        assertFalse(event.isProcessed());
     }
 
     @Test

@@ -87,8 +87,8 @@ class OutboxEventSchedulerTest {
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
         assertThrows(RuntimeException.class, () -> outboxEventScheduler.processPendingEvents());
-        verify(outboxEventRepository).save(event);
-        assertTrue(event.isProcessed());
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        assertFalse(event.isProcessed());
     }
 
     @Test
@@ -98,5 +98,39 @@ class OutboxEventSchedulerTest {
         outboxEventScheduler.processPendingEvents();
 
         verify(rabbitTemplate, never()).send(anyString(), anyString(), any(Message.class));
+    }
+
+    @Test
+    void shouldProcessMultiplePendingEvents() {
+        OutboxEvent event1 = buildEvent("CertificateGeneratedEvent", 1L);
+        OutboxEvent event2 = buildEvent("CertificateGeneratedEvent", 2L);
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event1, event2));
+        stubTransactionTemplate();
+
+        outboxEventScheduler.processPendingEvents();
+
+        verify(outboxEventRepository, times(2)).save(any(OutboxEvent.class));
+        verify(rabbitTemplate, times(2)).send(anyString(), anyString(), any(Message.class));
+        assertTrue(event1.isProcessed());
+        assertTrue(event2.isProcessed());
+    }
+
+    @Test
+    void shouldMarkEventAsNotProcessedWhenSendFailsAndRethrow() {
+        // Covers the catch(Exception e) -> log + throw branch inside the lambda
+        OutboxEvent event = buildEvent("CertificateGeneratedEvent", 1L);
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        // executeWithoutResult actually executes the lambda so the exception propagates
+        doAnswer(inv -> {
+            Consumer<Object> consumer = inv.getArgument(0);
+            consumer.accept(null); // this will throw because rabbitTemplate.send throws
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any(Consumer.class));
+        doThrow(new RuntimeException("RabbitMQ unavailable"))
+                .when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
+
+        assertThrows(RuntimeException.class, () -> outboxEventScheduler.processPendingEvents());
+        verify(outboxEventRepository, never()).save(any());
+        assertFalse(event.isProcessed());
     }
 }

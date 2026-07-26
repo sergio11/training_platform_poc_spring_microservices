@@ -30,7 +30,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-    systemProperty("junit.jupiter.execution.timeout.default", "600s")
+    // @BeforeAll starts Postgres + RabbitMQ + Keycloak + 5 microservices (~11 min total)
+    systemProperty("junit.jupiter.execution.timeout.lifecycle.method.default", "1200s")
+    // Each individual test method should complete in under 2 minutes
+    systemProperty("junit.jupiter.execution.timeout.test.method.default", "120s")
     systemProperty("testcontainers.ryuk.disabled", "true")
     maxParallelForks = 1
     forkEvery = 100

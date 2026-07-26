@@ -44,6 +44,10 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        systemProperty("testcontainers.ryuk.disabled", "true")
+        systemProperty("ryuk.disabled", "true")
+        environment("TESTCONTAINERS_RYUK_DISABLED", "true")
+        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/podman-machine-default")
     }
 
     tasks.withType<JacocoReport> {
@@ -104,6 +108,10 @@ subprojects {
         description = "Runs integration tests with Testcontainers"
         group = "verification"
         shouldRunAfter("test")
+        systemProperty("testcontainers.ryuk.disabled", "true")
+        systemProperty("ryuk.disabled", "true")
+        environment("TESTCONTAINERS_RYUK_DISABLED", "true")
+        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/podman-machine-default")
     }
 
     // Unit test task (excluding integration tests)
@@ -123,7 +131,14 @@ tasks.register("e2eTest", Test::class) {
     group = "verification"
     maxParallelForks = 1
     shouldRunAfter("test")
-    systemProperty("junit.jupiter.execution.timeout.default", "600s")
+    // @BeforeAll starts Postgres + RabbitMQ + Keycloak + 5 microservices (~11 min total)
+    systemProperty("junit.jupiter.execution.timeout.lifecycle.method.default", "1200s")
+    // Each individual test method should complete in under 2 minutes
+    systemProperty("junit.jupiter.execution.timeout.test.method.default", "120s")
+    systemProperty("testcontainers.ryuk.disabled", "true")
+    systemProperty("ryuk.disabled", "true")
+    environment("TESTCONTAINERS_RYUK_DISABLED", "true")
+    environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/podman-machine-default")
 }
 
 tasks.register("testAll", Test::class) {

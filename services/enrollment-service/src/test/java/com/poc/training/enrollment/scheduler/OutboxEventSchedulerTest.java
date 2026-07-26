@@ -154,8 +154,8 @@ class OutboxEventSchedulerTest {
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
         assertThrows(RuntimeException.class, () -> outboxEventScheduler.processPendingEvents());
-        verify(outboxEventRepository).save(event);
-        assertTrue(event.isProcessed());
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        assertFalse(event.isProcessed());
     }
 
     @Test

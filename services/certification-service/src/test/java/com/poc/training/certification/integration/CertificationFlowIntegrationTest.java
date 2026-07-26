@@ -9,7 +9,6 @@ import com.poc.training.testsupport.AbstractIntegrationTest;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
@@ -24,14 +23,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("integration")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CertificationFlowIntegrationTest extends AbstractIntegrationTest {
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @BeforeAll
-    void createSequence() {
-        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS certificate_number_seq START 1 INCREMENT 1");
-    }
 
     @Autowired
     private CertificateRepository certificateRepository;

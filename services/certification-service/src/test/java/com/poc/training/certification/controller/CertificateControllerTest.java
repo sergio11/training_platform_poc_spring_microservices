@@ -184,4 +184,92 @@ class CertificateControllerTest {
                         .param("sortBy", "invalidField"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void shouldAllowAdminToViewAnyEmployeeCertificates() throws Exception {
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findByEmployeeId(eq(2L), any())).thenReturn(new PageImpl<>(Arrays.asList(c)));
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            // Admin is NOT employee-only: the isEmployeeOnly branch returns false
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(false);
+
+            mockMvc.perform(get("/api/v1/certificates").param("employeeId", "2"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void shouldAllowAdminToViewAnyEmployeeCertificateById() throws Exception {
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findById(1L)).thenReturn(c);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            // Admin is NOT employee-only: the isEmployeeOnly branch returns false
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(false);
+
+            mockMvc.perform(get("/api/v1/certificates/1"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void shouldAllowAdminToViewAnyEmployeeCertificateByNumber() throws Exception {
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(2L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findByCertificateNumber("CERT-001")).thenReturn(c);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            // Admin is NOT employee-only: the isEmployeeOnly branch returns false
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(false);
+
+            mockMvc.perform(get("/api/v1/certificates/number/CERT-001"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void shouldAllowEmployeeToViewOwnCertificateById() throws Exception {
+        // Branch: isEmployeeOnly=true AND employeeId matches -> no AccessDeniedException
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(1L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findById(1L)).thenReturn(c);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/certificates/1"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void shouldAllowEmployeeToViewOwnCertificateByNumber() throws Exception {
+        // Branch: isEmployeeOnly=true AND employeeId matches -> no AccessDeniedException
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(1L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findByCertificateNumber("CERT-001")).thenReturn(c);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/certificates/number/CERT-001"))
+                    .andExpect(status().isOk());
+        }
+    }
 }
+

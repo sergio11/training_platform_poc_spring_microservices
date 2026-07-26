@@ -37,6 +37,14 @@ public abstract class BaseE2ETest {
     private static boolean initialized = false;
     private static volatile boolean setupAttempted = false;
 
+    static {
+        System.setProperty("testcontainers.ryuk.disabled", "true");
+        System.setProperty("ryuk.disabled", "true");
+        if (System.getenv("DOCKER_HOST") == null) {
+            System.setProperty("docker.host", "npipe:////./pipe/podman-machine-default");
+        }
+    }
+
     protected static PostgreSQLContainer<?> postgres;
     protected static org.testcontainers.containers.GenericContainer<?> rabbitmq;
     protected static org.testcontainers.containers.GenericContainer<?> keycloak;
@@ -69,7 +77,7 @@ public abstract class BaseE2ETest {
                         .withDatabaseName("training_platform")
                         .withUsername("test")
                         .withPassword("test")
-                        .withStartupTimeout(Duration.ofSeconds(60));
+                        .withStartupTimeout(Duration.ofSeconds(300));
                 postgres.start();
 
                 rabbitmq = new org.testcontainers.containers.GenericContainer<>(
@@ -87,9 +95,9 @@ public abstract class BaseE2ETest {
                         .withCopyFileToContainer(
                                 MountableFile.forClasspathResource("keycloak/realm-export.json"),
                                 "/opt/keycloak/data/import/realm-export.json")
-                        .withStartupTimeout(Duration.ofSeconds(240))
+                        .withStartupTimeout(Duration.ofSeconds(480))
                         .waitingFor(Wait.forLogMessage(".*Listening on:.*", 1)
-                                .withStartupTimeout(Duration.ofSeconds(240)));
+                                .withStartupTimeout(Duration.ofSeconds(480)));
                 keycloak.start();
 
                 int keycloakPort = keycloak.getMappedPort(8080);

@@ -18,7 +18,7 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
     
     implementation("org.flywaydb:flyway-core")
-    runtimeOnly("org.flywaydb:flyway-database-postgresql")
+    implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("com.h2database:h2")
     
