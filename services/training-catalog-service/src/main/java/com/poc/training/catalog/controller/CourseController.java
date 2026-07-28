@@ -83,20 +83,6 @@ public class CourseController {
         }
     }
 
-    @PatchMapping("/{id}/enroll")
-    @PreAuthorize("hasAnyRole('instructor', 'admin')")
-    public ResponseEntity<Void> incrementEnrolledCount(@PathVariable Long id) {
-        courseService.incrementEnrolledCount(id);
-        return ResponseEntity.ok().build();
-    }
-
-    @PatchMapping("/{id}/unenroll")
-    @PreAuthorize("hasAnyRole('instructor', 'admin')")
-    public ResponseEntity<Void> decrementEnrolledCount(@PathVariable Long id) {
-        courseService.decrementEnrolledCount(id);
-        return ResponseEntity.ok().build();
-    }
-
     @PatchMapping("/{id}/complete")
     @PreAuthorize("hasAnyRole('instructor', 'admin')")
     public ResponseEntity<CourseResponse> markCourseAsCompleted(@PathVariable Long id) {

@@ -335,4 +335,19 @@ public abstract class BaseE2ETest {
                 .pollInterval(1, TimeUnit.SECONDS)
                 .untilAsserted(assertion);
     }
+
+    protected static void waitForEnrolledCount(Long courseId, int expectedCount, String token) {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    Map<?, ?> course = catalogClient.get()
+                            .uri("/api/v1/courses/{id}", courseId)
+                            .header("Authorization", "Bearer " + token)
+                            .retrieve().bodyToMono(Map.class).block();
+                    assertThat(course.get("enrolledCount"))
+                            .as("enrolledCount for course %d", courseId)
+                            .isEqualTo(expectedCount);
+                });
+    }
 }

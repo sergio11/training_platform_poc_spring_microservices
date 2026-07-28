@@ -60,14 +60,7 @@ subprojects {
             classDirectories.files.map { dir ->
                 fileTree(dir) {
                     exclude(
-                        "**/*Application.class",
-                        "**/*Config.class",
-                        "**/*DTO.class",
-                        "**/*Request.class",
-                        "**/*Response.class",
-                        "**/*Constants.class",
-                        "**/*Exception.class",
-                        "**/*Handler.class"
+                        "**/*Application.class"
                     )
                 }
             }
@@ -79,21 +72,17 @@ subprojects {
             classDirectories.files.map { dir ->
                 fileTree(dir) {
                     exclude(
-                        "**/*Application.class",
-                        "**/*Config.class",
-                        "**/*DTO.class",
-                        "**/*Request.class",
-                        "**/*Response.class",
-                        "**/*Constants.class",
-                        "**/*Exception.class",
-                        "**/*Handler.class"
+                        "**/*Application.class"
                     )
                 }
             }
         )
         violationRules {
             rule {
+                element = "BUNDLE"
                 limit {
+                    counter = "INSTRUCTION"
+                    value = "COVEREDRATIO"
                     minimum = "0.98".toBigDecimal()
                 }
             }

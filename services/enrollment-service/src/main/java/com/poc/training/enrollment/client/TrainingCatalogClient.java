@@ -36,40 +36,9 @@ public class TrainingCatalogClient {
                 .block(Duration.ofSeconds(5));
     }
 
-    @CircuitBreaker(name = "catalogService", fallbackMethod = "incrementEnrolledCountFallback")
-    @Retry(name = "catalogService")
-    public void incrementEnrolledCount(Long courseId) {
-        log.info("Incrementing enrolled count for course: {}", courseId);
-        webClient.patch()
-                .uri("/api/v1/courses/{id}/enroll", courseId)
-                .retrieve()
-                .bodyToMono(Void.class)
-                .block(Duration.ofSeconds(5));
-    }
-
     public CourseDTO getCourseFallback(Long courseId, Throwable throwable) {
         log.error("Fallback called for getCourse with id: {}. Error: {}", courseId, throwable.getMessage());
         throw new ServiceUnavailableException("Catalog Service unavailable for course: " + courseId, throwable);
     }
 
-    public void incrementEnrolledCountFallback(Long courseId, Throwable throwable) {
-        log.error("Fallback called for incrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
-        throw new RuntimeException("Failed to increment enrolled count for course: " + courseId, throwable);
-    }
-
-    @CircuitBreaker(name = "catalogService", fallbackMethod = "decrementEnrolledCountFallback")
-    @Retry(name = "catalogService")
-    public void decrementEnrolledCount(Long courseId) {
-        log.info("Decrementing enrolled count for course: {}", courseId);
-        webClient.patch()
-                .uri("/api/v1/courses/{id}/unenroll", courseId)
-                .retrieve()
-                .bodyToMono(Void.class)
-                .block(Duration.ofSeconds(5));
-    }
-
-    public void decrementEnrolledCountFallback(Long courseId, Throwable throwable) {
-        log.error("Fallback called for decrementEnrolledCount with id: {}. Error: {}", courseId, throwable.getMessage());
-        throw new RuntimeException("Failed to decrement enrolled count for course: " + courseId, throwable);
-    }
 }

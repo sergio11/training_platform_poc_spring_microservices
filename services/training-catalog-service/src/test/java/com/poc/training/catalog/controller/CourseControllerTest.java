@@ -200,21 +200,6 @@ class CourseControllerTest {
     }
 
     @Test
-    void shouldEnrollInCourse() throws Exception {
-        mockMvc.perform(patch("/api/v1/courses/1/enroll"))
-                .andExpect(status().isOk());
-        verify(courseService).incrementEnrolledCount(1L);
-    }
-
-    @Test
-    void shouldReturn500WhenNoSeatsAvailable() throws Exception {
-        doThrow(new BusinessException("No available seats for course: 1"))
-                .when(courseService).incrementEnrolledCount(1L);
-        mockMvc.perform(patch("/api/v1/courses/1/enroll"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void shouldReturnActiveCourses() throws Exception {
         CourseResponse response = CourseResponse.builder()
                 .id(1L)
@@ -230,21 +215,6 @@ class CourseControllerTest {
         mockMvc.perform(get("/api/v1/courses/active"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].title").value("Java Basics"));
-    }
-
-    @Test
-    void shouldUnenrollFromCourse() throws Exception {
-        mockMvc.perform(patch("/api/v1/courses/1/unenroll"))
-                .andExpect(status().isOk());
-        verify(courseService).decrementEnrolledCount(1L);
-    }
-
-    @Test
-    void shouldReturn400WhenNoSeatsToDecrement() throws Exception {
-        doThrow(new BusinessException("Cannot decrement enrolled count for course: 1. Count is already 0."))
-                .when(courseService).decrementEnrolledCount(1L);
-        mockMvc.perform(patch("/api/v1/courses/1/unenroll"))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

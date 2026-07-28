@@ -123,21 +123,8 @@ public class EnrollmentService {
             );
         }
 
-        Long courseId = enrollment.getCourseId();
-
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         Enrollment saved = enrollmentRepository.save(enrollment);
-
-        try {
-            trainingCatalogClient.incrementEnrolledCount(courseId);
-        } catch (Exception e) {
-            try {
-                trainingCatalogClient.decrementEnrolledCount(courseId);
-            } catch (Exception ex) {
-                log.error("Failed to compensate enrolledCount for course {} after increment failure", courseId, ex);
-            }
-            throw e;
-        }
 
         EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
@@ -231,15 +218,6 @@ public class EnrollmentService {
             throw new BusinessException(
                 "Cannot cancel enrollment in status: " + enrollment.getStatus() + ". Expected: PENDING or APPROVED"
             );
-        }
-
-        if (enrollment.getStatus() == EnrollmentStatus.APPROVED) {
-            try {
-                trainingCatalogClient.decrementEnrolledCount(enrollment.getCourseId());
-            } catch (Exception e) {
-                log.error("Failed to decrement enrolledCount for course {} during cancel of enrollment {}",
-                        enrollment.getCourseId(), enrollmentId, e);
-            }
         }
 
         enrollment.setStatus(EnrollmentStatus.CANCELLED);

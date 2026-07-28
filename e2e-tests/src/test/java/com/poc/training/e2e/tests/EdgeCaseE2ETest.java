@@ -64,6 +64,7 @@ class EdgeCaseE2ETest extends BaseE2ETest {
 
         Map<?, ?> firstEnroll = createEnrollment(token, emp1, course);
         approveEnrollment(token, Long.valueOf(String.valueOf(firstEnroll.get("id"))));
+        waitForEnrolledCount(course, 1, token);
 
         assertThatThrownBy(() -> createEnrollment(token, emp2, course))
                 .isInstanceOf(WebClientResponseException.class)

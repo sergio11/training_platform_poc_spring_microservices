@@ -3,9 +3,13 @@ package com.poc.training.employee.service;
 import com.poc.training.employee.dto.EmployeeRequest;
 import com.poc.training.employee.dto.EmployeeResponse;
 import com.poc.training.employee.model.Employee;
+import com.poc.training.employee.model.OutboxEvent;
 import com.poc.training.employee.repository.EmployeeRepository;
+import com.poc.training.employee.repository.OutboxEventRepository;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
+import tools.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,8 +31,19 @@ class EmployeeServiceTest {
     @Mock
     private EmployeeRepository employeeRepository;
 
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
     @InjectMocks
     private EmployeeService employeeService;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+    }
 
     @Test
     void shouldFindAllActiveEmployees() {
@@ -56,7 +71,7 @@ class EmployeeServiceTest {
     }
 
     @Test
-    void shouldCreateEmployee() {
+    void shouldCreateEmployee() throws Exception {
         EmployeeRequest request = EmployeeRequest.builder()
                 .employeeNumber("EMP003")
                 .fullName("Charlie")
@@ -75,6 +90,7 @@ class EmployeeServiceTest {
         EmployeeResponse result = employeeService.create(request);
         assertEquals("EMP003", result.getEmployeeNumber());
         assertEquals("Charlie", result.getFullName());
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -91,7 +107,7 @@ class EmployeeServiceTest {
     }
 
     @Test
-    void shouldDeactivateEmployee() {
+    void shouldDeactivateEmployee() throws Exception {
         Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));
 
@@ -99,6 +115,7 @@ class EmployeeServiceTest {
 
         assertFalse(e.isActive());
         verify(employeeRepository).save(e);
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -162,6 +179,36 @@ class EmployeeServiceTest {
                 .build();
 
         assertThrows(ResourceNotFoundException.class, () -> employeeService.update(99L, request));
+    }
+
+    @Test
+    void shouldThrowWhenSerializationFailsOnCreate() throws Exception {
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP003")
+                .fullName("Charlie")
+                .email("charlie@test.com")
+                .department("Engineering")
+                .build();
+
+        when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
+        when(employeeRepository.findByEmail("charlie@test.com")).thenReturn(Optional.empty());
+        when(employeeRepository.save(any(Employee.class))).thenAnswer(inv -> {
+            Employee e = inv.getArgument(0);
+            e.setId(3L);
+            return e;
+        });
+        when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("Serialization error"));
+
+        assertThrows(RuntimeException.class, () -> employeeService.create(request));
+    }
+
+    @Test
+    void shouldThrowWhenSerializationFailsOnDeactivate() throws Exception {
+        Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("Serialization error"));
+
+        assertThrows(RuntimeException.class, () -> employeeService.deactivate(1L));
     }
 
     @Test

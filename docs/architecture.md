@@ -20,16 +20,25 @@ This document describes the architecture of the Corporate Training Platform, a m
 │     Service       │            │     Service       │            │     Service       │
 │    (Port 8081)    │            │    (Port 8082)    │            │    (Port 8083)    │
 └─────────┬─────────┘            └─────────┬─────────┘            └─────────┬─────────┘
-          │                                │                                │
-          │                                │                                │
-          └────────────────────────────────┼────────────────────────────────┘
-                                           │
-                                           ▼
-                                ┌───────────────────┐
-                                │   Notification    │
-                                │     Service       │
-                                │    (Port 8084)    │
-                                └───────────────────┘
+          │        ▲                       │                                │
+          │        │                       │                                │
+          │  enrollment.approved           │                                │
+          │  enrollment.cancelled          │                                │
+          │        │                       │                                │
+          └────────┼───────────────────────┼────────────────────────────────┘
+                   │                       │
+                   │                       ▼
+                   │            ┌───────────────────┐
+                   │            │   Notification    │
+                   │            │     Service       │
+                   │            │    (Port 8084)    │
+                   │            └───────────────────┘
+                   │
+          ┌────────┴─────────┐
+          │   Employee       │
+          │   Service        │
+          │   (Port 8085)    │
+          └──────────────────┘
 ```
 
 ## Microservices
@@ -38,8 +47,9 @@ This document describes the architecture of the Corporate Training Platform, a m
 - **Purpose**: Manages course catalog
 - **Responsibilities**:
   - CRUD operations for courses
-  - Course capacity management
+  - Course capacity management (via event-driven enrollment tracking)
   - Course status management
+  - Consumes `enrollment.approved` and `enrollment.cancelled` events to update enrolled count
 - **Endpoints**:
   - `GET /api/v1/courses` - List all courses
   - `GET /api/v1/courses/{id}` - Get course by ID
@@ -51,15 +61,29 @@ This document describes the architecture of the Corporate Training Platform, a m
 - **Purpose**: Manages employee enrollments
 - **Responsibilities**:
   - Employee enrollment in courses
-  - Seat availability validation
+  - Seat availability validation (via HTTP to Catalog)
   - Enrollment approval/completion
-  - Resilience4j circuit breaker for external calls
+  - Publishes events via outbox pattern (enrollment.created, enrollment.approved, enrollment.rejected, enrollment.cancelled, course.completed)
 - **Endpoints**:
   - `GET /api/v1/enrollments?employeeId=X` - List enrollments
   - `GET /api/v1/enrollments/{id}` - Get enrollment
   - `POST /api/v1/enrollments?employeeId=X&courseId=Y` - Create enrollment
   - `PATCH /api/v1/enrollments/{id}/approve` - Approve enrollment
   - `PATCH /api/v1/enrollments/{id}/complete` - Complete enrollment
+
+### Employee Service (Port 8085)
+- **Purpose**: Manages employee records
+- **Responsibilities**:
+  - CRUD operations for employees
+  - Employee lookup and existence validation
+  - Publishes employee.created and employee.deactivated events via outbox pattern
+- **Endpoints**:
+  - `GET /api/v1/employees` - List employees
+  - `GET /api/v1/employees/{id}` - Get employee by ID
+  - `GET /api/v1/employees/{id}/exists` - Check employee existence
+  - `POST /api/v1/employees` - Create employee
+  - `PUT /api/v1/employees/{id}` - Update employee
+  - `DELETE /api/v1/employees/{id}` - Deactivate employee
 
 ### Certification Service (Port 8083)
 - **Purpose**: Manages course certificates
@@ -93,21 +117,46 @@ This document describes the architecture of the Corporate Training Platform, a m
    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
    │ Enrollment      │───▶│  RabbitMQ       │───▶│  Notification   │
    │ Service         │    │  (enrollment.   │    │  Service        │
-   │                 │    │   created)      │    │                 │
+   │ (outbox)        │    │   created)      │    │                 │
    └─────────────────┘    └─────────────────┘    └─────────────────┘
 
 2. Enrollment Approved
    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
    │ Enrollment      │───▶│  RabbitMQ       │───▶│  Notification   │
    │ Service         │    │  (enrollment.   │    │  Service        │
-   │                 │    │   approved)     │    │                 │
-   └─────────────────┘    └─────────────────┘    └─────────────────┘
+   │ (outbox)        │    │   approved)     │    │                 │
+   └─────────────────┘    └────────┬────────┘    └─────────────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │  Training       │
+                         │  Catalog        │
+                         │  Service        │
+                         │  (increments    │
+                         │   enrolledCount)│
+                         └─────────────────┘
 
-3. Course Completed
+3. Enrollment Cancelled
+   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+   │ Enrollment      │───▶│  RabbitMQ       │───▶│  Notification   │
+   │ Service         │    │  (enrollment.   │    │  Service        │
+   │ (outbox)        │    │   cancelled)    │    │                 │
+   └─────────────────┘    └────────┬────────┘    └─────────────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │  Training       │
+                         │  Catalog        │
+                         │  Service        │
+                         │  (decrements    │
+                         │   enrolledCount)│
+                         └─────────────────┘
+
+4. Course Completed
    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
    │ Enrollment      │───▶│  RabbitMQ       │───▶│  Certification  │
    │ Service         │    │  (course.       │    │  Service        │
-   │                 │    │   completed)    │    │                 │
+   │ (outbox)        │    │   completed)    │    │                 │
    └─────────────────┘    └─────────────────┘    └────────┬────────┘
                                                           │
                                                           ▼
@@ -129,11 +178,19 @@ This document describes the architecture of the Corporate Training Platform, a m
                                                │  Service        │
                                                └─────────────────┘
 
-4. Notification Sent
+5. Employee Created/Deactivated
+   ┌─────────────────┐    ┌─────────────────┐
+   │ Employee        │───▶│  RabbitMQ       │
+   │ Service         │    │  (employee.     │
+   │ (outbox)        │    │   created/      │
+   │                 │    │   deactivated)  │
+   └─────────────────┘    └─────────────────┘
+
+6. Notification Sent
    ┌─────────────────┐    ┌─────────────────┐
    │ Notification    │───▶│  RabbitMQ       │
    │ Service         │    │  (notification. │
-   │                 │    │   sent)         │
+   │ (outbox)        │    │   sent)         │
    └─────────────────┘    └─────────────────┘
 ```
 
@@ -146,16 +203,21 @@ This document describes the architecture of the Corporate Training Platform, a m
   - `training_enrollment` - Enrollment Service
   - `training_certification` - Certification Service
   - `training_notification` - Notification Service
+  - `training_employee` - Employee Service
 
 ### RabbitMQ
 - **Purpose**: Asynchronous messaging between services
 - **Exchange**: `training.exchange` (topic)
 - **Queues**:
-  - `enrollment.created`
-  - `enrollment.approved`
-  - `course.completed`
-  - `certificate.generated`
-  - `notification.sent`
+  - `enrollment.created` - Consumed by Notification Service
+  - `enrollment.approved` - Consumed by Notification Service and Training Catalog Service
+  - `enrollment.cancelled` - Consumed by Notification Service and Training Catalog Service
+  - `course.completed` - Consumed by Certification Service and Notification Service
+  - `certificate.generated` - Consumed by Notification Service
+  - `employee.created` - Published by Employee Service
+  - `employee.deactivated` - Published by Employee Service
+  - `notification.sent` - Published by Notification Service
+  - `catalog.dlq` - Dead letter queue for Catalog Service
 
 ### Keycloak
 - **Purpose**: OAuth2/OIDC authentication and authorization
@@ -165,6 +227,7 @@ This document describes the architecture of the Corporate Training Platform, a m
   - `training-enrollment-client`
   - `training-certification-client`
   - `training-notification-client`
+  - `training-employee-client`
   - `training-frontend`
 
 ### Kong Gateway
@@ -174,6 +237,7 @@ This document describes the architecture of the Corporate Training Platform, a m
   - `/api/v1/enrollments` → Enrollment Service
   - `/api/v1/certificates` → Certification Service
   - `/api/v1/notifications` → Notification Service
+  - `/api/v1/employees` → Employee Service
 
 ### Config Server
 - **Purpose**: Centralized configuration management
@@ -205,7 +269,7 @@ This document describes the architecture of the Corporate Training Platform, a m
 ## Resilience Patterns
 
 ### Circuit Breaker (Resilience4j)
-- **Service**: Enrollment Service → Training Catalog Service
+- **Service**: Enrollment Service → Training Catalog Service (getCourse only)
 - **Configuration**:
   - Sliding window: 10 calls
   - Failure threshold: 50%
@@ -213,10 +277,19 @@ This document describes the architecture of the Corporate Training Platform, a m
   - Half-open calls: 3
 
 ### Retry (Resilience4j)
-- **Service**: Enrollment Service → Training Catalog Service
+- **Service**: Enrollment Service → Training Catalog Service (getCourse only)
 - **Configuration**:
   - Max attempts: 3
   - Wait duration: 500ms
+
+### Transactional Outbox Pattern
+- **Services**: Enrollment, Employee, Certification, Notification
+- **Purpose**: Reliable event publishing without distributed transactions
+- **Implementation**: Events persisted to `outbox_events` table within the same DB transaction as business data, then polled and published to RabbitMQ every 5 seconds
+
+### Idempotent Event Consumption
+- **Services**: Training Catalog (processed_events table), Notification (processed_event table)
+- **Purpose**: Prevent duplicate event processing
 
 ## Security
 
@@ -263,6 +336,7 @@ rake k8s:logs[training-catalog-service]
 | Enrollment Service | 8082 |
 | Certification Service | 8083 |
 | Notification Service | 8084 |
+| Employee Service | 8085 |
 | Config Server | 8888 |
 | PostgreSQL | 5432 |
 | RabbitMQ | 5672, 15672 |

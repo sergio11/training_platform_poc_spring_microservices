@@ -150,6 +150,7 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
         Long emp2 = createEmployee(token, "EMP-E2E-NOSEATS");
         Map<?, ?> firstEnroll = createEnrollment(token, emp2, noSeatsCourse);
         approveEnrollment(token, Long.valueOf(String.valueOf(firstEnroll.get("id"))));
+        waitForEnrolledCount(noSeatsCourse, 1, token);
 
         Long emp3 = createEmployee(token, "EMP-E2E-NOSEATS-2");
         assertThatThrownBy(() -> createEnrollment(token, emp3, noSeatsCourse))

@@ -13,6 +13,8 @@ public final class RabbitMQConstants {
     public static final String ROUTING_KEY_COURSE_COMPLETED = "course.completed";
     public static final String ROUTING_KEY_CERTIFICATE_GENERATED = "certificate.generated";
     public static final String ROUTING_KEY_NOTIFICATION_SENT = "notification.sent";
+    public static final String ROUTING_KEY_EMPLOYEE_CREATED = "employee.created";
+    public static final String ROUTING_KEY_EMPLOYEE_DEACTIVATED = "employee.deactivated";
 
     public static final String QUEUE_ENROLLMENT_CREATED = "enrollment.created";
     public static final String QUEUE_ENROLLMENT_APPROVED = "enrollment.approved";
@@ -21,4 +23,6 @@ public final class RabbitMQConstants {
     public static final String QUEUE_COURSE_COMPLETED = "course.completed";
     public static final String QUEUE_CERTIFICATE_GENERATED = "certificate.generated";
     public static final String QUEUE_NOTIFICATION_SENT = "notification.sent";
+    public static final String QUEUE_EMPLOYEE_CREATED = "employee.created";
+    public static final String QUEUE_EMPLOYEE_DEACTIVATED = "employee.deactivated";
 }

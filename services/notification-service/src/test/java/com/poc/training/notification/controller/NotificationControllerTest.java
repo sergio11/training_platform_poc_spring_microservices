@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 
+import com.poc.training.shared.exception.BusinessException;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -143,6 +145,51 @@ class NotificationControllerTest {
 
             mockMvc.perform(get("/api/v1/notifications/1"))
                     .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void shouldReturn400ForInvalidSortField() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications")
+                        .param("recipientId", "1")
+                        .param("sortBy", "invalidField"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldAllowEmployeeViewingOwnNotifications() throws Exception {
+        NotificationResponse response = NotificationResponse.builder()
+                .id(1L).recipientId(1L).type("ENROLLMENT_CREATED")
+                .message("My notification").status("SENT").build();
+        when(notificationService.findByRecipientId(eq(1L), any()))
+                .thenReturn(new PageImpl<>(Arrays.asList(response)));
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/notifications").param("recipientId", "1"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void shouldAllowEmployeeViewingOwnNotificationById() throws Exception {
+        NotificationResponse response = NotificationResponse.builder()
+                .id(1L).recipientId(1L).type("ENROLLMENT_CREATED")
+                .message("My notification").status("SENT").build();
+        when(notificationService.findById(1L)).thenReturn(response);
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/notifications/1"))
+                    .andExpect(status().isOk());
         }
     }
 }

@@ -202,14 +202,14 @@ class EnrollmentServiceTest {
     }
 
     @Test
-    void shouldCancelApprovedEnrollmentDecrementCountAndEmitEvent() {
+    void shouldCancelApprovedEnrollmentAndEmitEvent() {
         Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.APPROVED).build();
         when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
         when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EnrollmentResponse result = enrollmentService.cancel(1L);
         assertEquals(EnrollmentStatus.CANCELLED.name(), result.getStatus());
-        verify(trainingCatalogClient).decrementEnrolledCount(1L);
+        verify(enrollmentRepository).save(any(Enrollment.class));
         verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
@@ -270,39 +270,6 @@ class EnrollmentServiceTest {
     void shouldThrowExceptionWhenCancellingNotFound() {
         when(enrollmentRepository.findById(99L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> enrollmentService.cancel(99L));
-    }
-
-    @Test
-    void shouldApproveWithIncrementFailureThenCompensate() {
-        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
-        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
-        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
-        doThrow(new RuntimeException("Increment failed")).when(trainingCatalogClient).incrementEnrolledCount(1L);
-
-        assertThrows(RuntimeException.class, () -> enrollmentService.approve(1L));
-        verify(trainingCatalogClient).decrementEnrolledCount(1L);
-    }
-
-    @Test
-    void shouldApproveWithIncrementAndDecrementBothFailing() {
-        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.PENDING).build();
-        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
-        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
-        doThrow(new RuntimeException("Increment failed")).when(trainingCatalogClient).incrementEnrolledCount(1L);
-        doThrow(new RuntimeException("Decrement failed")).when(trainingCatalogClient).decrementEnrolledCount(1L);
-
-        assertThrows(RuntimeException.class, () -> enrollmentService.approve(1L));
-    }
-
-    @Test
-    void shouldCancelApprovedWithDecrementFailure() {
-        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.APPROVED).build();
-        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
-        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
-        doThrow(new RuntimeException("Decrement failed")).when(trainingCatalogClient).decrementEnrolledCount(1L);
-
-        EnrollmentResponse result = enrollmentService.cancel(1L);
-        assertEquals(EnrollmentStatus.CANCELLED.name(), result.getStatus());
     }
 
     @Test

@@ -55,18 +55,6 @@ class TrainingCatalogClientTest {
     }
 
     @Test
-    void shouldThrowInIncrementEnrolledCountFallback() {
-        assertThrows(RuntimeException.class, () ->
-                trainingCatalogClient.incrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
-    }
-
-    @Test
-    void shouldThrowInDecrementEnrolledCountFallback() {
-        assertThrows(RuntimeException.class, () ->
-                trainingCatalogClient.decrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
-    }
-
-    @Test
     void shouldThrowInGetCourseFallbackWithNullId() {
         assertThrows(ServiceUnavailableException.class, () ->
                 trainingCatalogClient.getCourseFallback(null, new RuntimeException("Error")));
@@ -86,30 +74,6 @@ class TrainingCatalogClientTest {
         assertNotNull(result);
         assertEquals("Java Basics", result.getTitle());
         verify(webClient).get();
-    }
-
-    @Test
-    void shouldIncrementEnrolledCount() {
-        when(webClient.patch()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString(), eq(1L))).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
-
-        trainingCatalogClient.incrementEnrolledCount(1L);
-
-        verify(webClient).patch();
-    }
-
-    @Test
-    void shouldDecrementEnrolledCount() {
-        when(webClient.patch()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString(), eq(1L))).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(Void.class)).thenReturn(Mono.empty());
-
-        trainingCatalogClient.decrementEnrolledCount(1L);
-
-        verify(webClient).patch();
     }
 
     @Test

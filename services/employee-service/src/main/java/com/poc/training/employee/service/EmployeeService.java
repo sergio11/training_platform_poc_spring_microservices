@@ -1,9 +1,15 @@
 package com.poc.training.employee.service;
 
+import tools.jackson.databind.ObjectMapper;
 import com.poc.training.employee.dto.EmployeeRequest;
 import com.poc.training.employee.dto.EmployeeResponse;
 import com.poc.training.employee.model.Employee;
+import com.poc.training.employee.model.OutboxEvent;
 import com.poc.training.employee.repository.EmployeeRepository;
+import com.poc.training.employee.repository.OutboxEventRepository;
+import com.poc.training.shared.event.EmployeeCreatedEvent;
+import com.poc.training.shared.event.EmployeeDeactivatedEvent;
+import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -13,12 +19,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     public static EmployeeResponse toResponse(Employee employee) {
         return EmployeeResponse.builder()
@@ -79,6 +90,20 @@ public class EmployeeService {
 
         Employee saved = employeeRepository.save(employee);
         log.info("Created employee: {} ({})", saved.getFullName(), saved.getEmployeeNumber());
+
+        EmployeeCreatedEvent event = EmployeeCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("employee-service")
+                .employeeId(saved.getId())
+                .employeeNumber(saved.getEmployeeNumber())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .department(saved.getDepartment())
+                .build();
+        persistOutboxEvent("Employee", String.valueOf(saved.getId()), "EmployeeCreatedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_EMPLOYEE_CREATED);
+
         return toResponse(saved);
     }
 
@@ -104,5 +129,31 @@ public class EmployeeService {
         employee.setActive(false);
         employeeRepository.save(employee);
         log.info("Deactivated employee: {} ({})", employee.getFullName(), employee.getEmployeeNumber());
+
+        EmployeeDeactivatedEvent event = EmployeeDeactivatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("employee-service")
+                .employeeId(employee.getId())
+                .employeeNumber(employee.getEmployeeNumber())
+                .build();
+        persistOutboxEvent("Employee", String.valueOf(employee.getId()), "EmployeeDeactivatedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_EMPLOYEE_DEACTIVATED);
+    }
+
+    private void persistOutboxEvent(String aggregateType, String aggregateId, String eventType, Object event, String routingKey) {
+        try {
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType(aggregateType)
+                    .aggregateId(aggregateId)
+                    .eventType(eventType)
+                    .payload(objectMapper.writeValueAsString(event))
+                    .routingKey(routingKey)
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+        } catch (Exception e) {
+            log.error("Failed to serialize {} for outbox: {}", eventType, e.getMessage());
+            throw new RuntimeException("Failed to persist outbox event", e);
+        }
     }
 }

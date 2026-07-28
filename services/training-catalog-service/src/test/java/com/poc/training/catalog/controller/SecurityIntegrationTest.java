@@ -107,36 +107,4 @@ class SecurityIntegrationTest {
                         .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isForbidden());
     }
-
-    @Test
-    void enrollEndpoint_shouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(patch("/api/v1/courses/1/enroll"))
-                .andExpect(result -> {
-                    int status = result.getResponse().getStatus();
-                    org.junit.jupiter.api.Assertions.assertTrue(
-                            status == 401 || status == 403,
-                            "Expected 401 or 403 but was " + status);
-                });
-    }
-
-    @Test
-    void enrollEndpoint_shouldReturn200WithAdminRole() throws Exception {
-        mockMvc.perform(patch("/api/v1/courses/1/enroll")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin"))))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void enrollEndpoint_shouldReturn200WithInstructorRole() throws Exception {
-        mockMvc.perform(patch("/api/v1/courses/1/enroll")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_instructor"))))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void enrollEndpoint_shouldReturn403WithEmployeeRole() throws Exception {
-        mockMvc.perform(patch("/api/v1/courses/1/enroll")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
-                .andExpect(status().isForbidden());
-    }
 }
