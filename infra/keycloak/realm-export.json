@@ -158,6 +158,37 @@
       ]
     },
     {
+      "clientId": "training-employee-client",
+      "name": "Employee Service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "employee-secret-2024",
+      "redirectUris": [],
+      "webOrigins": [],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "employeeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "employeeId",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "employeeId",
+            "jsonType": "String",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
+    },
+    {
       "clientId": "training-frontend",
       "name": "Training Frontend",
       "enabled": true,

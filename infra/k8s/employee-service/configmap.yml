@@ -6,4 +6,6 @@ metadata:
 data:
   SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql:5432/training_employee"
   SPRING_DATASOURCE_USERNAME: "postgres"
+  SPRING_RABBITMQ_HOST: "rabbitmq"
+  SPRING_RABBITMQ_PORT: "5672"
   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://keycloak:8080/realms/training-realm"

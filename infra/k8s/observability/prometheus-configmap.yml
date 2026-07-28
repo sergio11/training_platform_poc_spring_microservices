@@ -69,3 +69,7 @@ data:
         metrics_path: '/actuator/prometheus'
         static_configs:
           - targets: ['training-notification-service:8084']
+      - job_name: 'training-employee-service'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets: ['training-employee-service:8085']

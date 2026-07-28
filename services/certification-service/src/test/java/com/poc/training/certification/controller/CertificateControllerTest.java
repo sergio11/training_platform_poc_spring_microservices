@@ -144,6 +144,24 @@ class CertificateControllerTest {
     }
 
     @Test
+    void shouldAllowEmployeeToViewOwnCertificates() throws Exception {
+        CertificateResponse c = CertificateResponse.builder()
+                .id(1L).employeeId(1L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();
+        when(certificationService.findByEmployeeId(eq(1L), any())).thenReturn(new PageImpl<>(Arrays.asList(c)));
+
+        Jwt mockJwt = mock(Jwt.class);
+        try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
+            jwtUtils.when(JwtUtils::getJwtFromContext).thenReturn(mockJwt);
+            jwtUtils.when(() -> JwtUtils.isEmployeeOnly(mockJwt)).thenReturn(true);
+            jwtUtils.when(() -> JwtUtils.extractEmployeeIdAsLong(mockJwt)).thenReturn(1L);
+
+            mockMvc.perform(get("/api/v1/certificates").param("employeeId", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].certificateNumber").value("CERT-001"));
+        }
+    }
+
+    @Test
     void shouldDenyEmployeeViewingOtherCertificateById() throws Exception {
         CertificateResponse c = CertificateResponse.builder()
                 .id(1L).employeeId(2L).courseId(1L).certificateNumber("CERT-001").issuedAt(LocalDateTime.now()).build();

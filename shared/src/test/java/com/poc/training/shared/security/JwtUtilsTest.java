@@ -106,6 +106,15 @@ class JwtUtilsTest {
     }
 
     @Test
+    void shouldReturnFalseWhenNoEmployeeRole() {
+        Jwt jwt = createJwt(Map.of(
+                "realm_access", Map.of("roles", List.of("admin", "instructor"))
+        ));
+
+        assertFalse(JwtUtils.isEmployeeOnly(jwt));
+    }
+
+    @Test
     void shouldExtractEmployeeIdAsString() {
         Jwt jwt = createJwt(Map.of("employeeId", "42"));
 
