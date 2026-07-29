@@ -8,9 +8,25 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.MessageConversionException;
 import org.springframework.amqp.support.converter.SmartMessageConverter;
 
+import java.util.Set;
+
 public class Jackson3JsonMessageConverter implements SmartMessageConverter {
 
     private static final Logger log = LoggerFactory.getLogger(Jackson3JsonMessageConverter.class);
+
+    private static final Set<String> ALLOWED_TYPES = Set.of(
+            "com.poc.training.shared.event.EnrollmentCreatedEvent",
+            "com.poc.training.shared.event.EnrollmentApprovedEvent",
+            "com.poc.training.shared.event.EnrollmentRejectedEvent",
+            "com.poc.training.shared.event.EnrollmentCancelledEvent",
+            "com.poc.training.shared.event.CourseCompletedEvent",
+            "com.poc.training.shared.event.CertificateGeneratedEvent",
+            "com.poc.training.shared.event.NotificationSentEvent",
+            "com.poc.training.shared.event.EmployeeCreatedEvent",
+            "com.poc.training.shared.event.EmployeeDeactivatedEvent",
+            "com.poc.training.shared.event.EmployeeUpdatedEvent"
+    );
+
     private final ObjectMapper objectMapper;
 
     public Jackson3JsonMessageConverter() {
@@ -44,9 +60,7 @@ public class Jackson3JsonMessageConverter implements SmartMessageConverter {
     @Override
     public Object fromMessage(Message message, Object conversionHint) throws MessageConversionException {
         MessageProperties props = message.getMessageProperties();
-
         Object typeId = props.getHeaders().get("__TypeId__");
-
         Class<?> targetClass = resolveTargetClass(typeId, conversionHint);
 
         if (targetClass == null) {
@@ -56,7 +70,7 @@ public class Jackson3JsonMessageConverter implements SmartMessageConverter {
         try {
             return objectMapper.readValue(message.getBody(), targetClass);
         } catch (Exception e) {
-            log.error("Failed to convert message to object: {}", e.getMessage());
+            log.error("Failed to convert message to object of type {}: {}", targetClass.getName(), e.getMessage(), e);
             throw new MessageConversionException("Failed to convert message to object", e);
         }
     }
@@ -66,9 +80,14 @@ public class Jackson3JsonMessageConverter implements SmartMessageConverter {
             return clazz;
         }
         if (typeId instanceof String className) {
+            if (!ALLOWED_TYPES.contains(className)) {
+                log.warn("Blocked deserialization of non-allowed type: {}", className);
+                return null;
+            }
             try {
                 return Class.forName(className);
             } catch (ClassNotFoundException e) {
+                log.warn("Class not found for __TypeId__: {}", className);
                 return null;
             }
         }

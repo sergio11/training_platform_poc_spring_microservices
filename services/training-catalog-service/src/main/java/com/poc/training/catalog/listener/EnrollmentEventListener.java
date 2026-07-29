@@ -9,6 +9,7 @@ import com.poc.training.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -33,10 +34,16 @@ public class EnrollmentEventListener {
                     .build());
         } catch (BusinessException e) {
             log.warn("BusinessException processing enrollment.approved for courseId {}: {}", event.getCourseId(), e.getMessage());
-            processedEventRepository.save(ProcessedEvent.builder()
-                    .eventId(event.getEventId())
-                    .eventType("EnrollmentApprovedEvent")
-                    .build());
+            try {
+                processedEventRepository.save(ProcessedEvent.builder()
+                        .eventId(event.getEventId())
+                        .eventType("EnrollmentApprovedEvent")
+                        .build());
+            } catch (DataIntegrityViolationException ignored) {
+                log.debug("ProcessedEvent already saved for eventId: {}", event.getEventId());
+            }
+        } catch (DataIntegrityViolationException e) {
+            log.debug("ProcessedEvent already saved for eventId: {} (concurrent processing)", event.getEventId());
         } catch (Exception e) {
             log.error("Error processing enrollment.approved for courseId {}: {}", event.getCourseId(), e.getMessage(), e);
             throw e;
@@ -57,10 +64,16 @@ public class EnrollmentEventListener {
                     .build());
         } catch (BusinessException e) {
             log.warn("BusinessException processing enrollment.cancelled for courseId {}: {}", event.getCourseId(), e.getMessage());
-            processedEventRepository.save(ProcessedEvent.builder()
-                    .eventId(event.getEventId())
-                    .eventType("EnrollmentCancelledEvent")
-                    .build());
+            try {
+                processedEventRepository.save(ProcessedEvent.builder()
+                        .eventId(event.getEventId())
+                        .eventType("EnrollmentCancelledEvent")
+                        .build());
+            } catch (DataIntegrityViolationException ignored) {
+                log.debug("ProcessedEvent already saved for eventId: {}", event.getEventId());
+            }
+        } catch (DataIntegrityViolationException e) {
+            log.debug("ProcessedEvent already saved for eventId: {} (concurrent processing)", event.getEventId());
         } catch (Exception e) {
             log.error("Error processing enrollment.cancelled for courseId {}: {}", event.getCourseId(), e.getMessage(), e);
             throw e;

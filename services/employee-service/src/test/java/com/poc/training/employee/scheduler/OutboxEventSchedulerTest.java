@@ -11,6 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -44,7 +46,7 @@ class OutboxEventSchedulerTest {
                 .processed(false)
                 .build();
 
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         doAnswer(invocation -> {
             java.util.function.Consumer<org.springframework.transaction.TransactionStatus> callback = invocation.getArgument(0);
             callback.accept(null);
@@ -53,7 +55,7 @@ class OutboxEventSchedulerTest {
 
         outboxEventScheduler.processPendingEvents();
 
-        verify(outboxEventRepository).findByProcessedFalseOrderByCreatedAtAsc();
+        verify(outboxEventRepository).findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100));
         verify(transactionTemplate).executeWithoutResult(any());
         verify(rabbitTemplate).convertAndSend(
                 RabbitMQConstants.EXCHANGE,
@@ -65,11 +67,11 @@ class OutboxEventSchedulerTest {
 
     @Test
     void shouldSkipWhenNoPendingEvents() {
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(Collections.emptyList());
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(Collections.emptyList());
 
         outboxEventScheduler.processPendingEvents();
 
-        verify(outboxEventRepository).findByProcessedFalseOrderByCreatedAtAsc();
+        verify(outboxEventRepository).findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100));
         verify(transactionTemplate, never()).executeWithoutResult(any());
         verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), anyString());
     }
@@ -85,7 +87,7 @@ class OutboxEventSchedulerTest {
                 .eventType("EmployeeDeactivatedEvent").payload("p2")
                 .routingKey(RabbitMQConstants.ROUTING_KEY_EMPLOYEE_DEACTIVATED).processed(false).build();
 
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event1, event2));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
         doAnswer(invocation -> {
             java.util.function.Consumer<org.springframework.transaction.TransactionStatus> callback = invocation.getArgument(0);
             callback.accept(null);
@@ -100,13 +102,13 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
-    void shouldThrowWhenSendFails() {
+    void shouldNotThrowWhenSendFails() {
         OutboxEvent event = OutboxEvent.builder()
                 .id(1L).aggregateType("Employee").aggregateId("1")
                 .eventType("EmployeeCreatedEvent").payload("p")
                 .routingKey(RabbitMQConstants.ROUTING_KEY_EMPLOYEE_CREATED).processed(false).build();
 
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         doAnswer(invocation -> {
             java.util.function.Consumer<org.springframework.transaction.TransactionStatus> callback = invocation.getArgument(0);
             callback.accept(null);
@@ -115,6 +117,7 @@ class OutboxEventSchedulerTest {
         doThrow(new RuntimeException("RabbitMQ unavailable"))
                 .when(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString());
 
-        assertThrows(RuntimeException.class, () -> outboxEventScheduler.processPendingEvents());
+        assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
+        assertFalse(event.isProcessed());
     }
 }

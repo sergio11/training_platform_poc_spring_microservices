@@ -15,6 +15,7 @@ public final class RabbitMQConstants {
     public static final String ROUTING_KEY_NOTIFICATION_SENT = "notification.sent";
     public static final String ROUTING_KEY_EMPLOYEE_CREATED = "employee.created";
     public static final String ROUTING_KEY_EMPLOYEE_DEACTIVATED = "employee.deactivated";
+    public static final String ROUTING_KEY_EMPLOYEE_UPDATED = "employee.updated";
 
     public static final String QUEUE_ENROLLMENT_CREATED = "enrollment.created";
     public static final String QUEUE_ENROLLMENT_APPROVED = "enrollment.approved";

@@ -8,12 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -26,10 +26,11 @@ public class OutboxEventScheduler {
 
     @Scheduled(fixedDelayString = "${outbox.polling-interval:5000}")
     public void processPendingEvents() {
-        List<OutboxEvent> pendingEvents = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc();
+        var pendingEvents = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(
+                PageRequest.of(0, 100));
         for (OutboxEvent event : pendingEvents) {
-            transactionTemplate.executeWithoutResult(status -> {
-                try {
+            try {
+                transactionTemplate.executeWithoutResult(status -> {
                     MessageProperties props = new MessageProperties();
                     props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
                     props.setHeader("__TypeId__", resolveEventType(event.getEventType()));
@@ -42,11 +43,10 @@ public class OutboxEventScheduler {
                     event.setProcessed(true);
                     outboxEventRepository.save(event);
                     log.info("Sent outbox event: {} {}", event.getEventType(), event.getAggregateId());
-                } catch (Exception e) {
-                    log.error("Failed to send outbox event {}: {}", event.getId(), e.getMessage());
-                    throw e;
-                }
-            });
+                });
+            } catch (Exception e) {
+                log.error("Failed to send outbox event {}: {}", event.getId(), e.getMessage());
+            }
         }
     }
 

@@ -66,25 +66,6 @@ class Jackson3JsonMessageConverterTest {
     }
 
     @Test
-    void fromMessageShouldDeserializeUsingTypeIdHeader() throws Exception {
-        SimpleObject obj = new SimpleObject("hello", 7);
-        byte[] json = objectMapper.writeValueAsBytes(obj);
-
-        MessageProperties props = new MessageProperties();
-        props.setContentType("application/json");
-        props.setHeader("__TypeId__", SimpleObject.class.getName());
-        Message message = new Message(json, props);
-
-        Object result = converter.fromMessage(message);
-
-        assertNotNull(result);
-        assertInstanceOf(SimpleObject.class, result);
-        SimpleObject deserialized = (SimpleObject) result;
-        assertEquals("hello", deserialized.getName());
-        assertEquals(7, deserialized.getValue());
-    }
-
-    @Test
     void fromMessageShouldDeserializeUsingConversionHint() throws Exception {
         SimpleObject obj = new SimpleObject("hint", 99);
         byte[] json = objectMapper.writeValueAsBytes(obj);
@@ -113,14 +94,14 @@ class Jackson3JsonMessageConverterTest {
     }
 
     @Test
-    void fromMessageShouldThrowForMalformedJson() {
+    void fromMessageShouldThrowForBlockedTypeId() {
         MessageProperties props = new MessageProperties();
         props.setHeader("__TypeId__", SimpleObject.class.getName());
         Message message = new Message("not json {{{".getBytes(), props);
 
         MessageConversionException ex = assertThrows(MessageConversionException.class,
                 () -> converter.fromMessage(message));
-        assertTrue(ex.getMessage().contains("Failed to convert message to object"));
+        assertTrue(ex.getMessage().contains("No target class resolved"));
     }
 
     @Test
@@ -129,8 +110,9 @@ class Jackson3JsonMessageConverterTest {
         props.setHeader("__TypeId__", "com.nonexistent.FakeClass");
         Message message = new Message("{}".getBytes(), props);
 
-        assertThrows(MessageConversionException.class,
+        MessageConversionException ex = assertThrows(MessageConversionException.class,
                 () -> converter.fromMessage(message));
+        assertTrue(ex.getMessage().contains("No target class resolved"));
     }
 
     @Test
@@ -171,5 +153,44 @@ class Jackson3JsonMessageConverterTest {
 
         assertThrows(MessageConversionException.class,
                 () -> converter.fromMessage(message));
+    }
+
+    @Test
+    void fromMessageSingleArgShouldDelegateToTwoArg() {
+        MessageProperties props = new MessageProperties();
+        Message message = new Message("body".getBytes(), props);
+
+        MessageConversionException ex = assertThrows(MessageConversionException.class,
+                () -> converter.fromMessage(message));
+        assertTrue(ex.getMessage().contains("No target class resolved"));
+    }
+
+    @Test
+    void fromMessageShouldDeserializeUsingValidAllowedType() throws Exception {
+        String json = "{\"eventId\":\"e1\",\"source\":\"test\",\"enrollmentId\":1,\"employeeId\":10,\"courseId\":20}";
+        MessageProperties props = new MessageProperties();
+        props.setHeader("__TypeId__", "com.poc.training.shared.event.EnrollmentCreatedEvent");
+        Message message = new Message(json.getBytes(), props);
+
+        Object result = converter.fromMessage(message);
+
+        assertNotNull(result);
+        assertInstanceOf(com.poc.training.shared.event.EnrollmentCreatedEvent.class, result);
+        com.poc.training.shared.event.EnrollmentCreatedEvent event =
+                (com.poc.training.shared.event.EnrollmentCreatedEvent) result;
+        assertEquals(1L, event.getEnrollmentId());
+        assertEquals(10L, event.getEmployeeId());
+        assertEquals(20L, event.getCourseId());
+    }
+
+    @Test
+    void fromMessageShouldThrowWhenDeserializationFailsForAllowedType() {
+        MessageProperties props = new MessageProperties();
+        props.setHeader("__TypeId__", "com.poc.training.shared.event.EnrollmentCreatedEvent");
+        Message message = new Message("not valid json {{{".getBytes(), props);
+
+        MessageConversionException ex = assertThrows(MessageConversionException.class,
+                () -> converter.fromMessage(message));
+        assertTrue(ex.getMessage().contains("Failed to convert message to object"));
     }
 }

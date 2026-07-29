@@ -130,4 +130,18 @@ class GlobalExceptionHandlerTest {
         assertEquals("An unexpected error occurred. Please contact support.", response.getBody().get("message"));
         assertNotNull(response.getBody().get("timestamp"));
     }
+
+    @Test
+    void shouldReturn503ForServiceUnavailable() {
+        ServiceUnavailableException ex = new ServiceUnavailableException("Keycloak is down");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleServiceUnavailable(ex);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(503, response.getBody().get("status"));
+        assertEquals("Service Unavailable", response.getBody().get("error"));
+        assertEquals("Keycloak is down", response.getBody().get("message"));
+        assertNotNull(response.getBody().get("timestamp"));
+    }
 }

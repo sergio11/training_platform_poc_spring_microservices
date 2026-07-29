@@ -9,6 +9,7 @@ import com.poc.training.employee.repository.EmployeeRepository;
 import com.poc.training.employee.repository.OutboxEventRepository;
 import com.poc.training.shared.event.EmployeeCreatedEvent;
 import com.poc.training.shared.event.EmployeeDeactivatedEvent;
+import com.poc.training.shared.event.EmployeeUpdatedEvent;
 import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
@@ -119,6 +120,21 @@ public class EmployeeService {
 
         Employee saved = employeeRepository.save(employee);
         log.info("Updated employee: {} ({})", saved.getFullName(), saved.getEmployeeNumber());
+
+        EmployeeUpdatedEvent event = EmployeeUpdatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("employee-service")
+                .employeeId(saved.getId())
+                .employeeNumber(saved.getEmployeeNumber())
+                .fullName(saved.getFullName())
+                .email(saved.getEmail())
+                .department(saved.getDepartment())
+                .position(saved.getPosition())
+                .build();
+        persistOutboxEvent("Employee", String.valueOf(saved.getId()), "EmployeeUpdatedEvent",
+                event, RabbitMQConstants.ROUTING_KEY_EMPLOYEE_UPDATED);
+
         return toResponse(saved);
     }
 

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Tag;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -97,7 +98,7 @@ class OutboxEventSchedulerIntegrationTest extends AbstractIntegrationTest {
 
         outboxEventScheduler.processPendingEvents();
 
-        long processedCount = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc().stream().count();
+        long processedCount = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)).stream().count();
         assertEquals(0, processedCount);
     }
 }

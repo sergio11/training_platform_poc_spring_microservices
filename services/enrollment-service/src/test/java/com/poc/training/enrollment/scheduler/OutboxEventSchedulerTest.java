@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -57,7 +58,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessCreatedEvent() {
         OutboxEvent event = buildEvent("EnrollmentCreatedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -70,7 +71,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessApprovedEvent() {
         OutboxEvent event = buildEvent("EnrollmentApprovedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -84,7 +85,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessRejectedEvent() {
         OutboxEvent event = buildEvent("EnrollmentRejectedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -98,7 +99,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessCancelledEvent() {
         OutboxEvent event = buildEvent("EnrollmentCancelledEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -112,7 +113,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessCourseCompletedEvent() {
         OutboxEvent event = buildEvent("CourseCompletedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -126,7 +127,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessCertificateGeneratedEvent() {
         OutboxEvent event = buildEvent("CertificateGeneratedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -138,22 +139,23 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
-    void shouldThrowExceptionForUnknownEventType() {
+    void shouldNotThrowForUnknownEventType() {
         OutboxEvent event = buildEvent("UnknownEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
-        assertThrows(IllegalArgumentException.class, () -> outboxEventScheduler.processPendingEvents());
+        assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
+        assertFalse(event.isProcessed());
     }
 
     @Test
-    void shouldRethrowExceptionWhenSendFails() {
+    void shouldNotRethrowExceptionWhenSendFails() {
         OutboxEvent event = buildEvent("EnrollmentCreatedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
-        assertThrows(RuntimeException.class, () -> outboxEventScheduler.processPendingEvents());
+        assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
         verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
         assertFalse(event.isProcessed());
     }
@@ -162,7 +164,7 @@ class OutboxEventSchedulerTest {
     void shouldHandleMultipleEvents() {
         OutboxEvent e1 = buildEvent("EnrollmentCreatedEvent", 1L);
         OutboxEvent e2 = buildEvent("EnrollmentApprovedEvent", 2L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of(e1, e2));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(e1, e2));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -173,7 +175,7 @@ class OutboxEventSchedulerTest {
 
     @Test
     void shouldHandleEmptyPendingEvents() {
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc()).thenReturn(List.of());
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxEventScheduler.processPendingEvents();
 

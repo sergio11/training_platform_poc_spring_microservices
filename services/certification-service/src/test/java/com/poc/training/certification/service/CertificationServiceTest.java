@@ -7,7 +7,6 @@ import com.poc.training.certification.model.OutboxEvent;
 import com.poc.training.certification.repository.CertificateRepository;
 import com.poc.training.certification.repository.OutboxEventRepository;
 import com.poc.training.shared.event.CourseCompletedEvent;
-import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -99,7 +98,6 @@ class CertificationServiceTest {
                 .courseId(1L)
                 .build();
 
-        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
         when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
         when(certificateRepository.save(any(Certificate.class))).thenAnswer(inv -> {
             Certificate c = inv.getArgument(0);
@@ -132,12 +130,13 @@ class CertificationServiceTest {
                 .courseId(1L)
                 .build();
 
-        Certificate existing = Certificate.builder().id(1L).enrollmentId(1L).build();
-        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.of(existing));
+        when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
+        when(certificateRepository.save(any(Certificate.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate enrollment_id"));
 
-        certificationService.handleCourseCompleted(event);
-
-        verify(certificateRepository, never()).save(any(Certificate.class));
+        assertDoesNotThrow(() -> certificationService.handleCourseCompleted(event));
+        verify(certificateRepository).save(any(Certificate.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -151,7 +150,6 @@ class CertificationServiceTest {
                 .courseId(1L)
                 .build();
 
-        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
         when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
         when(certificateRepository.save(any(Certificate.class))).thenAnswer(inv -> {
             Certificate c = inv.getArgument(0);
@@ -166,7 +164,7 @@ class CertificationServiceTest {
     }
 
     @Test
-    void shouldThrowOnDataIntegrityViolation() {
+    void shouldLogAndSwallowDataIntegrityViolation() {
         CourseCompletedEvent event = CourseCompletedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -176,14 +174,11 @@ class CertificationServiceTest {
                 .courseId(1L)
                 .build();
 
-        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.empty());
         when(certificateRepository.nextCertificateNumber()).thenReturn(1L);
         when(certificateRepository.save(any(Certificate.class)))
                 .thenThrow(new DataIntegrityViolationException("Detail: Key (enrollment_id)=(1) already exists."));
 
-        assertThrows(DataIntegrityViolationException.class, () ->
-            certificationService.handleCourseCompleted(event)
-        );
+        assertDoesNotThrow(() -> certificationService.handleCourseCompleted(event));
         verify(certificateRepository, times(1)).save(any(Certificate.class));
         verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }

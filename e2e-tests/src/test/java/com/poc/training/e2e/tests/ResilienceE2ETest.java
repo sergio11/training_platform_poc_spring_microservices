@@ -26,8 +26,8 @@ class ResilienceE2ETest extends BaseE2ETest {
     }
 
     @Test
-    @DisplayName("Enrollment rejects when employee service is unreachable")
-    void enrollmentRejectsWhenEmployeeServiceUnreachable() {
+    @DisplayName("Enrollment service handles downstream failure gracefully")
+    void enrollmentHandlesDownstreamFailure() {
         String token = adminToken();
 
         assertThatThrownBy(() -> enrollmentClient.post().uri("/api/v1/enrollments")
@@ -37,7 +37,7 @@ class ResilienceE2ETest extends BaseE2ETest {
                 .isInstanceOf(WebClientResponseException.class)
                 .satisfies(e -> {
                     int status = ((WebClientResponseException) e).getStatusCode().value();
-                    assertThat(status).isIn(400, 404);
+                    assertThat(status).isIn(400, 404, 503);
                 });
     }
 

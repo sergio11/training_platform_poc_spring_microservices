@@ -143,7 +143,7 @@ namespace :test do
     setup_podman_env
     cmd = Rake::Win32.windows? ? 'gradlew.bat' : './gradlew'
     begin
-      sh "#{cmd} clean test jacocoTestReport jacocoTestCoverageVerification --rerun-tasks --no-build-cache"
+      sh "#{cmd} clean test jacocoTestReport jacocoTestCoverageVerification --rerun-tasks --no-build-cache --no-daemon"
     ensure
       print_coverage_table
     end

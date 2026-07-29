@@ -10,7 +10,6 @@ import com.poc.training.certification.repository.OutboxEventRepository;
 import com.poc.training.shared.event.CertificateGeneratedEvent;
 import com.poc.training.shared.event.CourseCompletedEvent;
 import com.poc.training.shared.event.RabbitMQConstants;
-import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,53 +74,51 @@ public class CertificationService {
             return;
         }
 
-        Certificate saved = generateCertificate(event);
-
         try {
-            CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
-                    .eventId(UUID.randomUUID().toString())
-                    .timestamp(LocalDateTime.now())
-                    .source("certification-service")
-                    .certificateId(saved.getId())
-                    .enrollmentId(saved.getEnrollmentId())
-                    .employeeId(saved.getEmployeeId())
-                    .courseId(saved.getCourseId())
-                    .certificateNumber(saved.getCertificateNumber())
-                    .build();
+            Certificate saved = generateCertificate(event);
 
-            OutboxEvent outboxEvent = OutboxEvent.builder()
-                    .aggregateType("Certificate")
-                    .aggregateId(String.valueOf(saved.getId()))
-                    .eventType("CertificateGeneratedEvent")
-                    .payload(objectMapper.writeValueAsString(certificateEvent))
-                    .routingKey(RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED)
-                    .build();
+            try {
+                CertificateGeneratedEvent certificateEvent = CertificateGeneratedEvent.builder()
+                        .eventId(UUID.randomUUID().toString())
+                        .timestamp(LocalDateTime.now())
+                        .source("certification-service")
+                        .certificateId(saved.getId())
+                        .enrollmentId(saved.getEnrollmentId())
+                        .employeeId(saved.getEmployeeId())
+                        .courseId(saved.getCourseId())
+                        .certificateNumber(saved.getCertificateNumber())
+                        .build();
 
-            outboxEventRepository.save(outboxEvent);
-            log.info("Persisted CertificateGeneratedEvent to outbox for certificate: {}", saved.getId());
-        } catch (JacksonException e) {
-            log.error("Failed to serialize CertificateGeneratedEvent: {}", e.getMessage());
+                OutboxEvent outboxEvent = OutboxEvent.builder()
+                        .aggregateType("Certificate")
+                        .aggregateId(String.valueOf(saved.getId()))
+                        .eventType("CertificateGeneratedEvent")
+                        .payload(objectMapper.writeValueAsString(certificateEvent))
+                        .routingKey(RabbitMQConstants.ROUTING_KEY_CERTIFICATE_GENERATED)
+                        .build();
+
+                outboxEventRepository.save(outboxEvent);
+                log.info("Persisted CertificateGeneratedEvent to outbox for certificate: {}", saved.getId());
+            } catch (JacksonException e) {
+                log.error("Failed to serialize CertificateGeneratedEvent: {}", e.getMessage());
+            }
+        } catch (DataIntegrityViolationException e) {
+            log.info("Certificate already exists for enrollment: {} (detected by DB constraint)", event.getEnrollmentId());
         }
     }
 
     private Certificate generateCertificate(CourseCompletedEvent event) {
-        try {
-            String seq = String.format("%06d", certificateRepository.nextCertificateNumber());
-            String date = DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDate.now());
-            String certificateNumber = "CERT-" + date + "-" + seq;
+        String seq = String.format("%06d", certificateRepository.nextCertificateNumber());
+        String date = DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDate.now());
+        String certificateNumber = "CERT-" + date + "-" + seq;
 
-            Certificate certificate = Certificate.builder()
-                    .certificateNumber(certificateNumber)
-                    .enrollmentId(event.getEnrollmentId())
-                    .employeeId(event.getEmployeeId())
-                    .courseId(event.getCourseId())
-                    .build();
+        Certificate certificate = Certificate.builder()
+                .certificateNumber(certificateNumber)
+                .enrollmentId(event.getEnrollmentId())
+                .employeeId(event.getEmployeeId())
+                .courseId(event.getCourseId())
+                .build();
 
-            return certificateRepository.save(certificate);
-        } catch (DataIntegrityViolationException e) {
-            log.error("Data integrity violation generating certificate for enrollment {}: {}",
-                    event.getEnrollmentId(), e.getMessage());
-            throw e;
-        }
+        return certificateRepository.save(certificate);
     }
 }
