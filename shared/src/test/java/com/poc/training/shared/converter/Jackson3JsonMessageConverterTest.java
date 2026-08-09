@@ -193,4 +193,22 @@ class Jackson3JsonMessageConverterTest {
                 () -> converter.fromMessage(message));
         assertTrue(ex.getMessage().contains("Failed to convert message to object"));
     }
+
+    @Test
+    void fromMessageShouldHandleClassNotFoundForAllowedType() {
+        Jackson3JsonMessageConverter testConverter = new Jackson3JsonMessageConverter() {
+            @Override
+            protected Class<?> loadClass(String className) throws ClassNotFoundException {
+                throw new ClassNotFoundException("not found");
+            }
+        };
+
+        MessageProperties props = new MessageProperties();
+        props.setHeader("__TypeId__", "com.poc.training.shared.event.EnrollmentCreatedEvent");
+        Message message = new Message("{}".getBytes(), props);
+
+        MessageConversionException ex = assertThrows(MessageConversionException.class,
+                () -> testConverter.fromMessage(message));
+        assertTrue(ex.getMessage().contains("No target class resolved"));
+    }
 }

@@ -1,7 +1,8 @@
 package com.poc.training.notification.scheduler;
 
-import com.poc.training.notification.model.OutboxEvent;
-import com.poc.training.notification.repository.OutboxEventRepository;
+import com.poc.training.shared.model.OutboxEvent;
+import com.poc.training.shared.repository.OutboxEventRepository;
+import com.poc.training.shared.scheduler.OutboxEventScheduler;
 import com.poc.training.shared.event.RabbitMQConstants;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

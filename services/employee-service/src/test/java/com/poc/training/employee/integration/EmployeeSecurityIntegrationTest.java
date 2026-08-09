@@ -8,8 +8,10 @@ import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -35,11 +37,11 @@ class EmployeeSecurityIntegrationTest extends AbstractIntegrationTest {
     @Test
     void adminCanAccessAllEndpoints() throws Exception {
         mockMvc.perform(get("/api/v1/employees")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin"))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_admin"))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/employees")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin")))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_admin")))
                         .contentType("application/json")
                         .content("{\"employeeNumber\":\"EMP-SEC-001\",\"fullName\":\"Admin Test\",\"email\":\"admin@t.test\"}"))
                 .andExpect(status().isCreated());
@@ -48,14 +50,14 @@ class EmployeeSecurityIntegrationTest extends AbstractIntegrationTest {
     @Test
     void instructorCanGetEmployees() throws Exception {
         mockMvc.perform(get("/api/v1/employees")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_instructor"))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_instructor"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     void instructorCannotCreateEmployees() throws Exception {
         mockMvc.perform(post("/api/v1/employees")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_instructor")))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_instructor")))
                         .contentType("application/json")
                         .content("{\"employeeNumber\":\"EMP-SEC-002\",\"fullName\":\"Inst\",\"email\":\"inst@t.test\"}"))
                 .andExpect(status().isForbidden());
@@ -64,7 +66,7 @@ class EmployeeSecurityIntegrationTest extends AbstractIntegrationTest {
     @Test
     void employeeCannotAccessAllEmployees() throws Exception {
         mockMvc.perform(get("/api/v1/employees")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -74,7 +76,7 @@ class EmployeeSecurityIntegrationTest extends AbstractIntegrationTest {
                 .employeeNumber("EMP-SEC-003").fullName("Self").email("self@t.test").active(true).build());
 
         mockMvc.perform(get("/api/v1/employees/{id}", saved.getId())
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isOk());
     }
 
@@ -84,14 +86,14 @@ class EmployeeSecurityIntegrationTest extends AbstractIntegrationTest {
                 .employeeNumber("EMP-SEC-004").fullName("Exists").email("exists@t.test").active(true).build());
 
         mockMvc.perform(get("/api/v1/employees/{id}/exists", saved.getId())
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     void employeeCannotCreateEmployees() throws Exception {
         mockMvc.perform(post("/api/v1/employees")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee")))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_employee")))
                         .contentType("application/json")
                         .content("{\"employeeNumber\":\"EMP-SEC-005\",\"fullName\":\"Emp\",\"email\":\"emp@t.test\"}"))
                 .andExpect(status().isForbidden());

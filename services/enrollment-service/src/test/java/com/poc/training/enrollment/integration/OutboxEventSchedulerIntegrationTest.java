@@ -2,10 +2,10 @@ package com.poc.training.enrollment.integration;
 
 import com.poc.training.enrollment.model.Enrollment;
 import com.poc.training.enrollment.model.EnrollmentStatus;
-import com.poc.training.enrollment.model.OutboxEvent;
 import com.poc.training.enrollment.repository.EnrollmentRepository;
-import com.poc.training.enrollment.repository.OutboxEventRepository;
-import com.poc.training.enrollment.scheduler.OutboxEventScheduler;
+import com.poc.training.shared.model.OutboxEvent;
+import com.poc.training.shared.repository.OutboxEventRepository;
+import com.poc.training.shared.scheduler.OutboxEventScheduler;
 import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.testsupport.AbstractIntegrationTest;
 import org.junit.jupiter.api.*;

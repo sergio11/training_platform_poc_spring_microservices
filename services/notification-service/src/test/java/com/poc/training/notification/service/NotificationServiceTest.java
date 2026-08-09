@@ -6,11 +6,11 @@ import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
-import com.poc.training.notification.model.OutboxEvent;
 import com.poc.training.notification.model.ProcessedEvent;
 import com.poc.training.notification.repository.NotificationRepository;
-import com.poc.training.notification.repository.OutboxEventRepository;
 import com.poc.training.notification.repository.ProcessedEventRepository;
+import com.poc.training.shared.model.OutboxEvent;
+import com.poc.training.shared.repository.OutboxEventRepository;
 import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
 import com.poc.training.shared.exception.ResourceNotFoundException;
@@ -409,11 +409,9 @@ class NotificationServiceTest {
         });
         when(objectMapper.writeValueAsString(any())).thenThrow(mock(JacksonException.class));
 
-        notificationService.handleEnrollmentCreated(event);
-
-        verify(notificationSender).send(any(Notification.class));
-        verify(notificationRepository, times(2)).save(any(Notification.class));
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        assertThrows(RuntimeException.class, () ->
+            notificationService.handleEnrollmentCreated(event)
+        );
     }
 
     @Test

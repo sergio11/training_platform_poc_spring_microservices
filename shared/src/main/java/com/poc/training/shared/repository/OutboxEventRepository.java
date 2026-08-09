@@ -1,6 +1,6 @@
-package com.poc.training.enrollment.repository;
+package com.poc.training.shared.repository;
 
-import com.poc.training.enrollment.model.OutboxEvent;
+import com.poc.training.shared.model.OutboxEvent;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

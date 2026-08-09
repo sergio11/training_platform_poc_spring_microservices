@@ -1,5 +1,6 @@
 package com.poc.training.enrollment.config;
 
+import com.poc.training.shared.security.KeycloakJwtConverter;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.core.GrantedAuthority;
@@ -7,7 +8,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -18,11 +18,7 @@ class SecurityConfigTest {
 
     @SuppressWarnings("unchecked")
     private Converter<Jwt, Collection<GrantedAuthority>> getGrantedAuthoritiesConverter() throws Exception {
-        SecurityConfig config = new SecurityConfig();
-        Method method = SecurityConfig.class.getDeclaredMethod("keycloakJwtConverter");
-        method.setAccessible(true);
-        JwtAuthenticationConverter converter = (JwtAuthenticationConverter) method.invoke(config);
-
+        JwtAuthenticationConverter converter = KeycloakJwtConverter.create();
         Field field = JwtAuthenticationConverter.class.getDeclaredField("jwtGrantedAuthoritiesConverter");
         field.setAccessible(true);
         return (Converter<Jwt, Collection<GrantedAuthority>>) field.get(converter);

@@ -1,20 +1,23 @@
 package com.poc.training.certification.model;
 
+import com.poc.training.shared.model.OutboxEvent;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class OutboxEventTest {
 
     @Test
-    void shouldInitializeOnCreate() {
+    void shouldInitializeOnCreate() throws Exception {
         OutboxEvent event = new OutboxEvent();
         assertNull(event.getCreatedAt());
         assertFalse(event.isProcessed());
 
-        event.onCreate();
+        Method onCreate = OutboxEvent.class.getDeclaredMethod("onCreate");
+        onCreate.setAccessible(true);
+        onCreate.invoke(event);
 
         assertNotNull(event.getCreatedAt());
         assertFalse(event.isProcessed());

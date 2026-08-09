@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -45,7 +47,9 @@ class SecurityIntegrationTest {
         Page<CourseResponse> page = new PageImpl<>(List.of());
         when(courseService.findAll(any())).thenReturn(page);
         mockMvc.perform(get("/api/v1/courses")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isOk());
     }
 
@@ -70,7 +74,9 @@ class SecurityIntegrationTest {
         mockMvc.perform(post("/api/v1/courses")
                         .contentType("application/json")
                         .content("{\"title\":\"Test\",\"instructor\":\"X\",\"capacity\":1}")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("admin"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_admin"))))
                 .andExpect(status().isCreated());
     }
 
@@ -79,7 +85,9 @@ class SecurityIntegrationTest {
         mockMvc.perform(post("/api/v1/courses")
                         .contentType("application/json")
                         .content("{\"title\":\"Test\",\"instructor\":\"X\",\"capacity\":1}")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -97,14 +105,18 @@ class SecurityIntegrationTest {
     @Test
     void deleteEndpoint_shouldReturn204WithAdminRole() throws Exception {
         mockMvc.perform(delete("/api/v1/courses/1")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("admin"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_admin"))))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void deleteEndpoint_shouldReturn403WithEmployeeRole() throws Exception {
         mockMvc.perform(delete("/api/v1/courses/1")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isForbidden());
     }
 }

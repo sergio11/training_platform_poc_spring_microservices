@@ -1,8 +1,8 @@
-package com.poc.training.certification.scheduler;
+package com.poc.training.shared.scheduler;
 
-import com.poc.training.certification.model.OutboxEvent;
-import com.poc.training.certification.repository.OutboxEventRepository;
 import com.poc.training.shared.event.RabbitMQConstants;
+import com.poc.training.shared.model.OutboxEvent;
+import com.poc.training.shared.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -52,7 +52,16 @@ public class OutboxEventScheduler {
 
     private String resolveEventType(String eventType) {
         return switch (eventType) {
+            case "EnrollmentCreatedEvent" -> "com.poc.training.shared.event.EnrollmentCreatedEvent";
+            case "EnrollmentApprovedEvent" -> "com.poc.training.shared.event.EnrollmentApprovedEvent";
+            case "EnrollmentRejectedEvent" -> "com.poc.training.shared.event.EnrollmentRejectedEvent";
+            case "EnrollmentCancelledEvent" -> "com.poc.training.shared.event.EnrollmentCancelledEvent";
+            case "CourseCompletedEvent" -> "com.poc.training.shared.event.CourseCompletedEvent";
             case "CertificateGeneratedEvent" -> "com.poc.training.shared.event.CertificateGeneratedEvent";
+            case "EmployeeCreatedEvent" -> "com.poc.training.shared.event.EmployeeCreatedEvent";
+            case "EmployeeUpdatedEvent" -> "com.poc.training.shared.event.EmployeeUpdatedEvent";
+            case "EmployeeDeactivatedEvent" -> "com.poc.training.shared.event.EmployeeDeactivatedEvent";
+            case "NotificationSentEvent" -> "com.poc.training.shared.event.NotificationSentEvent";
             default -> throw new IllegalArgumentException("Unknown event type: " + eventType);
         };
     }

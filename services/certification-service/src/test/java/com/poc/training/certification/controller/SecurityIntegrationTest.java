@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageImpl;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -46,7 +48,12 @@ class SecurityIntegrationTest {
         Page<CertificateResponse> page = new PageImpl<>(List.of());
         when(certificationService.findByEmployeeId(any(), any())).thenReturn(page);
         mockMvc.perform(get("/api/v1/certificates").param("employeeId", "1")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j
+                                        .subject("1")
+                                        .claim("employeeId", "1")
+                                        .claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isOk());
     }
 
@@ -63,7 +70,12 @@ class SecurityIntegrationTest {
                 .employeeId(1L).courseId(1L).issuedAt(LocalDateTime.now()).build();
         when(certificationService.findById(any())).thenReturn(response);
         mockMvc.perform(get("/api/v1/certificates/1")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j
+                                        .subject("1")
+                                        .claim("employeeId", "1")
+                                        .claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isOk());
     }
 }

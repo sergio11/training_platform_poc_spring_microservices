@@ -1,7 +1,9 @@
 package com.poc.training.employee.model;
 
+import com.poc.training.shared.model.OutboxEvent;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -9,9 +11,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class OutboxEventTest {
 
     @Test
-    void shouldSetDefaultsOnPrePersist() {
+    void shouldSetDefaultsOnPrePersist() throws Exception {
         OutboxEvent event = OutboxEvent.builder().build();
-        event.prePersist();
+
+        Method onCreate = OutboxEvent.class.getDeclaredMethod("onCreate");
+        onCreate.setAccessible(true);
+        onCreate.invoke(event);
 
         assertNotNull(event.getCreatedAt());
         assertFalse(event.isProcessed());

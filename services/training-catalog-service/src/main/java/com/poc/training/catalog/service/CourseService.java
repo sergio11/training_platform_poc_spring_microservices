@@ -5,6 +5,7 @@ import com.poc.training.catalog.dto.CourseResponse;
 import com.poc.training.catalog.model.Course;
 import com.poc.training.catalog.model.CourseStatus;
 import com.poc.training.catalog.repository.CourseRepository;
+import com.poc.training.catalog.specification.CourseSpecification;
 import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -52,25 +53,8 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public Page<CourseResponse> search(String title, String instructor, CourseStatus status, Pageable pageable) {
-        if (status != null && title != null) {
-            return courseRepository.findByStatusAndTitleContainingIgnoreCase(status, title, pageable).map(CourseService::toResponse);
-        }
-        if (status != null && instructor != null) {
-            return courseRepository.findByStatusAndInstructorContainingIgnoreCase(status, instructor, pageable).map(CourseService::toResponse);
-        }
-        if (status != null) {
-            return courseRepository.findByStatus(status, pageable).map(CourseService::toResponse);
-        }
-        if (title != null && instructor != null) {
-            return courseRepository.findByTitleContainingIgnoreCaseAndInstructorContainingIgnoreCase(title, instructor, pageable).map(CourseService::toResponse);
-        }
-        if (title != null) {
-            return courseRepository.findByTitleContainingIgnoreCase(title, pageable).map(CourseService::toResponse);
-        }
-        if (instructor != null) {
-            return courseRepository.findByInstructorContainingIgnoreCase(instructor, pageable).map(CourseService::toResponse);
-        }
-        return courseRepository.findAll(pageable).map(CourseService::toResponse);
+        return courseRepository.findAll(CourseSpecification.withFilters(title, instructor, status), pageable)
+                .map(CourseService::toResponse);
     }
 
     @Transactional(readOnly = true)

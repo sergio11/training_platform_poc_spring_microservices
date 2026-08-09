@@ -11,9 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -103,7 +105,7 @@ class EnrollmentEventListenerTest {
         doThrow(new RuntimeException("DB connection lost"))
                 .when(courseService).incrementEnrolledCount(10L);
 
-        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+        assertThrows(RuntimeException.class,
                 () -> enrollmentEventListener.handleEnrollmentApproved(event));
 
         verify(processedEventRepository, never()).save(any());
@@ -184,9 +186,95 @@ class EnrollmentEventListenerTest {
         doThrow(new RuntimeException("Timeout"))
                 .when(courseService).decrementEnrolledCount(20L);
 
-        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+        assertThrows(RuntimeException.class,
                 () -> enrollmentEventListener.handleEnrollmentCancelled(event));
 
         verify(processedEventRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldHandleDataIntegrityViolationOnApproved() {
+        EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
+                .eventId("evt-di")
+                .courseId(10L)
+                .employeeId(1L)
+                .enrollmentId(100L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-di")).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("Duplicate"))
+                .when(processedEventRepository).save(any());
+
+        enrollmentEventListener.handleEnrollmentApproved(event);
+
+        verify(courseService).incrementEnrolledCount(10L);
+    }
+
+    @Test
+    void shouldHandleDataIntegrityViolationOnCancelled() {
+        EnrollmentCancelledEvent event = EnrollmentCancelledEvent.builder()
+                .eventId("evt-cancel-di")
+                .courseId(20L)
+                .employeeId(2L)
+                .enrollmentId(200L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-cancel-di")).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("Duplicate"))
+                .when(processedEventRepository).save(any());
+
+        enrollmentEventListener.handleEnrollmentCancelled(event);
+
+        verify(courseService).decrementEnrolledCount(20L);
+    }
+
+    @Test
+    void shouldHandleBusinessExceptionThenDataIntegrityViolationOnApproved() {
+        EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
+                .eventId("evt-biz-di")
+                .courseId(10L)
+                .employeeId(1L)
+                .enrollmentId(100L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-biz-di")).thenReturn(false);
+        doThrow(new BusinessException("No available seats"))
+                .when(courseService).incrementEnrolledCount(10L);
+        doThrow(new DataIntegrityViolationException("Duplicate"))
+                .when(processedEventRepository).save(any());
+
+        enrollmentEventListener.handleEnrollmentApproved(event);
+
+        verify(processedEventRepository, times(1)).save(argThat(pe ->
+                pe.getEventId().equals("evt-biz-di") && pe.getEventType().equals("EnrollmentApprovedEvent")));
+    }
+
+    @Test
+    void shouldHandleBusinessExceptionThenDataIntegrityViolationOnCancelled() {
+        EnrollmentCancelledEvent event = EnrollmentCancelledEvent.builder()
+                .eventId("evt-cancel-biz-di")
+                .courseId(20L)
+                .employeeId(2L)
+                .enrollmentId(200L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-cancel-biz-di")).thenReturn(false);
+        doThrow(new BusinessException("Cannot decrement count"))
+                .when(courseService).decrementEnrolledCount(20L);
+        doThrow(new DataIntegrityViolationException("Duplicate"))
+                .when(processedEventRepository).save(any());
+
+        enrollmentEventListener.handleEnrollmentCancelled(event);
+
+        verify(processedEventRepository, times(1)).save(argThat(pe ->
+                pe.getEventId().equals("evt-cancel-biz-di") && pe.getEventType().equals("EnrollmentCancelledEvent")));
     }
 }

@@ -85,12 +85,16 @@ public class Jackson3JsonMessageConverter implements SmartMessageConverter {
                 return null;
             }
             try {
-                return Class.forName(className);
+                return loadClass(className);
             } catch (ClassNotFoundException e) {
                 log.warn("Class not found for __TypeId__: {}", className);
                 return null;
             }
         }
         return null;
+    }
+
+    protected Class<?> loadClass(String className) throws ClassNotFoundException {
+        return Class.forName(className);
     }
 }

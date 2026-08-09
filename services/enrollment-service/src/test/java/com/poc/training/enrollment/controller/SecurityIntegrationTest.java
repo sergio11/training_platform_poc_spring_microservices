@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -46,7 +48,11 @@ class SecurityIntegrationTest {
         Page<EnrollmentResponse> page = new PageImpl<>(List.of());
         when(enrollmentService.findByEmployeeId(any(), any())).thenReturn(page);
         mockMvc.perform(get("/api/v1/enrollments").param("employeeId", "1")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j
+                                        .claim("employeeId", "1")
+                                        .claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isOk());
     }
 
@@ -71,8 +77,11 @@ class SecurityIntegrationTest {
         mockMvc.perform(post("/api/v1/enrollments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"employeeId\":1,\"courseId\":1}")
-                        .with(jwt().jwt(builder -> builder.claim("employeeId", java.util.List.of("1")))
-                                .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j
+                                        .claim("employeeId", "1")
+                                        .claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isCreated());
     }
 
@@ -82,14 +91,18 @@ class SecurityIntegrationTest {
                 .id(1L).employeeId(1L).courseId(1L).status("APPROVED").build();
         when(enrollmentService.approve(any())).thenReturn(response);
         mockMvc.perform(patch("/api/v1/enrollments/1/approve")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_admin"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("admin"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_admin"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     void approveEndpoint_shouldReturn403WithEmployeeRole() throws Exception {
         mockMvc.perform(patch("/api/v1/enrollments/1/approve")
-                        .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_employee"))))
+                        .with(jwt()
+                                .jwt(j -> j.claim("realm_access", Map.of("roles", List.of("employee"))))
+                                .authorities(new SimpleGrantedAuthority("ROLE_employee"))))
                 .andExpect(status().isForbidden());
     }
 }

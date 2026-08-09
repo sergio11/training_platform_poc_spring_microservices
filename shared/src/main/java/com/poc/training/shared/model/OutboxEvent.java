@@ -1,4 +1,4 @@
-package com.poc.training.certification.model;
+package com.poc.training.shared.model;
 
 import jakarta.persistence.*;
 import lombok.*;

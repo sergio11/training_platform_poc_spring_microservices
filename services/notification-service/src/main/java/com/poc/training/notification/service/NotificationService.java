@@ -6,11 +6,11 @@ import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
 import com.poc.training.notification.model.NotificationType;
-import com.poc.training.notification.model.OutboxEvent;
 import com.poc.training.notification.model.ProcessedEvent;
 import com.poc.training.notification.repository.NotificationRepository;
-import com.poc.training.notification.repository.OutboxEventRepository;
 import com.poc.training.notification.repository.ProcessedEventRepository;
+import com.poc.training.shared.model.OutboxEvent;
+import com.poc.training.shared.repository.OutboxEventRepository;
 import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
 import com.poc.training.shared.event.RabbitMQConstants;
@@ -257,6 +257,7 @@ public class NotificationService {
             outboxEventRepository.save(outboxEvent);
         } catch (JacksonException e) {
             log.error("Failed to serialize {} for outbox: {}", eventType, e.getMessage());
+            throw new RuntimeException("Failed to persist outbox event", e);
         }
     }
 }
