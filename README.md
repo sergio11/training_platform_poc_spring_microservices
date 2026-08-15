@@ -23,7 +23,7 @@ Microservices architecture for corporate training management based on Spring Boo
 | enrollment-service | 8082 | Employee enrollment |
 | certification-service | 8083 | Certificate issuance |
 | notification-service | 8084 | Automatic notifications |
-| config-server | 8888 | Centralized configuration |
+| employee-service | 8085 | Employee records management |
 
 ## Infrastructure
 
@@ -46,25 +46,13 @@ Microservices architecture for corporate training management based on Spring Boo
 rake infra:start
 ```
 
-### 2. Build project
+### 2. Run tests
 
 ```bash
-rake build:all
+rake test:run
 ```
 
-### 3. Run services
-
-```bash
-rake run:service[training-catalog-service]
-```
-
-### 4. Run tests
-
-```bash
-rake test:all
-```
-
-### 5. View all available commands
+### 3. View all available commands
 
 ```bash
 rake help
