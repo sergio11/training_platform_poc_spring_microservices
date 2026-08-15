@@ -182,4 +182,25 @@ class CertificationServiceTest {
         verify(certificateRepository, times(1)).save(any(Certificate.class));
         verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
+
+    @Test
+    void shouldSkipGenerationWhenCertificateAlreadyExists() {
+        CourseCompletedEvent event = CourseCompletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        Certificate existing = Certificate.builder().id(1L).enrollmentId(1L).build();
+        when(certificateRepository.findByEnrollmentId(1L)).thenReturn(Optional.of(existing));
+
+        certificationService.handleCourseCompleted(event);
+
+        verify(certificateRepository, never()).nextCertificateNumber();
+        verify(certificateRepository, never()).save(any(Certificate.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+    }
 }

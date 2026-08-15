@@ -1,7 +1,5 @@
 package com.poc.training.notification.service;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
@@ -9,8 +7,6 @@ import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.model.ProcessedEvent;
 import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.notification.repository.ProcessedEventRepository;
-import com.poc.training.shared.model.OutboxEvent;
-import com.poc.training.shared.repository.OutboxEventRepository;
 import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
 import com.poc.training.shared.exception.ResourceNotFoundException;
@@ -44,22 +40,11 @@ class NotificationServiceTest {
     @Mock
     private ProcessedEventRepository processedEventRepository;
 
-    @Mock
-    private OutboxEventRepository outboxEventRepository;
-
-    @Mock
-    private ObjectMapper objectMapper;
-
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
-        try {
-            lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        } catch (JacksonException e) {
-            throw new RuntimeException(e);
-        }
-        notificationService = new NotificationService(notificationRepository, notificationSender, processedEventRepository, outboxEventRepository, objectMapper);
+        notificationService = new NotificationService(notificationRepository, notificationSender, processedEventRepository);
     }
 
     @Test
@@ -113,7 +98,6 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.ENROLLMENT_CREATED &&
                 n.getRecipientId().equals(1L)
         ));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -141,7 +125,6 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.ENROLLMENT_APPROVED &&
                 n.getRecipientId().equals(1L)
         ));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -171,7 +154,6 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.CERTIFICATE_GENERATED &&
                 n.getRecipientId().equals(1L)
         ));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -247,7 +229,6 @@ class NotificationServiceTest {
                 n.getType() == NotificationType.COURSE_COMPLETED &&
                 n.getRecipientId().equals(1L)
         ));
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
     @Test
@@ -387,31 +368,6 @@ class NotificationServiceTest {
 
         verify(notificationSender, never()).send(any(Notification.class));
         verify(notificationRepository, never()).save(argThat(n -> n instanceof Notification));
-    }
-
-    @Test
-    void shouldHandleJacksonExceptionInPersistOutboxEvent() throws JacksonException {
-        EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .source("enrollment-service")
-                .enrollmentId(1L)
-                .employeeId(1L)
-                .courseId(1L)
-                .build();
-
-        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
-        when(notificationSender.send(any(Notification.class))).thenReturn(true);
-        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
-            Notification n = inv.getArgument(0);
-            n.setId(1L);
-            return n;
-        });
-        when(objectMapper.writeValueAsString(any())).thenThrow(mock(JacksonException.class));
-
-        assertThrows(RuntimeException.class, () ->
-            notificationService.handleEnrollmentCreated(event)
-        );
     }
 
     @Test

@@ -41,4 +41,21 @@ public class TrainingCatalogClient {
         throw new ServiceUnavailableException("Catalog Service unavailable for course: " + courseId, throwable);
     }
 
+    public void incrementEnrolledCount(Long courseId) {
+        log.info("Incrementing enrolled count for course: {}", courseId);
+        webClient.patch()
+                .uri("/api/v1/courses/{id}/seats/increment", courseId)
+                .retrieve()
+                .toBodilessEntity()
+                .block(Duration.ofSeconds(5));
+    }
+
+    public void decrementEnrolledCount(Long courseId) {
+        log.info("Decrementing enrolled count for course: {}", courseId);
+        webClient.patch()
+                .uri("/api/v1/courses/{id}/seats/decrement", courseId)
+                .retrieve()
+                .toBodilessEntity()
+                .block(Duration.ofSeconds(5));
+    }
 }

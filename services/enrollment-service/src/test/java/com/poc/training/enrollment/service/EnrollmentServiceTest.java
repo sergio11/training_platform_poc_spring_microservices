@@ -34,6 +34,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 class EnrollmentServiceTest {
@@ -107,6 +108,7 @@ class EnrollmentServiceTest {
         assertNotNull(result);
         assertEquals(EnrollmentStatus.PENDING.name(), result.getStatus());
         verify(enrollmentRepository).save(any(Enrollment.class));
+        verify(trainingCatalogClient).incrementEnrolledCount(1L);
         verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
@@ -126,8 +128,16 @@ class EnrollmentServiceTest {
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(30).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
         when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> {
+            Enrollment e = inv.getArgument(0);
+            e.setId(1L);
+            return e;
+        });
+        doThrow(new BusinessException("No available seats for course: 1"))
+                .when(trainingCatalogClient).incrementEnrolledCount(1L);
 
         assertThrows(BusinessException.class, () -> enrollmentService.enroll(1L, 1L));
+        verify(enrollmentRepository).delete(any(Enrollment.class));
     }
 
     @Test
@@ -223,6 +233,24 @@ class EnrollmentServiceTest {
     }
 
     @Test
+    void shouldThrowExceptionWhenCancellingRejectedEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.REJECTED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(BusinessException.class, () -> enrollmentService.cancel(1L));
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCancellingAlreadyCancelledEnrollment() {
+        Enrollment e = Enrollment.builder().id(1L).employeeId(1L).courseId(1L).status(EnrollmentStatus.CANCELLED).build();
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(e));
+
+        assertThrows(BusinessException.class, () -> enrollmentService.cancel(1L));
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
     void shouldThrowExceptionWhenEmployeeNotFound() {
         when(employeeClient.existsById(99L)).thenReturn(false);
 
@@ -283,8 +311,52 @@ class EnrollmentServiceTest {
             e.setId(1L);
             return e;
         });
+        doNothing().when(trainingCatalogClient).incrementEnrolledCount(1L);
         when(objectMapper.writeValueAsString(any())).thenThrow(new tools.jackson.core.JacksonException("serialize error", null, null) {});
 
         assertThrows(RuntimeException.class, () -> enrollmentService.enroll(1L, 1L));
+    }
+
+    @Test
+    void shouldHandleConcurrentEnrollmentsForSameCourse() throws Exception {
+        when(employeeClient.existsById(anyLong())).thenReturn(true);
+        CourseDTO course = CourseDTO.builder().id(1L).capacity(1).enrolledCount(0).status("ACTIVE").build();
+        when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
+        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(anyLong(), eq(1L), anyList()))
+                .thenReturn(List.of());
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> {
+            Enrollment e = inv.getArgument(0);
+            e.setId(System.nanoTime());
+            return e;
+        });
+        doNothing().when(trainingCatalogClient).incrementEnrolledCount(1L);
+
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.List<java.util.concurrent.Future<EnrollmentResponse>> futures = new java.util.ArrayList<>();
+
+        for (int i = 0; i < 2; i++) {
+            final long empId = i + 1;
+            futures.add(executor.submit(() -> enrollmentService.enroll(empId, 1L)));
+        }
+
+        long successCount = futures.stream().filter(f -> {
+            try { f.get(); return true; } catch (Exception e) { return false; }
+        }).count();
+
+        assertThat(successCount).isBetween(1L, 2L);
+
+        executor.shutdown();
+    }
+
+    @Test
+    void shouldReturnTrueWhenHasActiveEnrollments() {
+        when(enrollmentRepository.existsByEmployeeIdAndStatusIn(eq(1L), anyList())).thenReturn(true);
+        assertTrue(enrollmentService.hasActiveEnrollments(1L));
+    }
+
+    @Test
+    void shouldReturnFalseWhenNoActiveEnrollments() {
+        when(enrollmentRepository.existsByEmployeeIdAndStatusIn(eq(1L), anyList())).thenReturn(false);
+        assertFalse(enrollmentService.hasActiveEnrollments(1L));
     }
 }

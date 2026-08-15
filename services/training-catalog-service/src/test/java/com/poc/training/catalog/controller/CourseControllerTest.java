@@ -186,6 +186,16 @@ class CourseControllerTest {
     }
 
     @Test
+    void shouldReturn400WhenCapacityIsNull() throws Exception {
+        mockMvc.perform(post("/api/v1/courses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Java\",\"instructor\":\"John\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Capacity is required")));
+    }
+
+    @Test
     void shouldReturn400WhenBodyIsInvalidJson() throws Exception {
         mockMvc.perform(post("/api/v1/courses")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -248,5 +258,19 @@ class CourseControllerTest {
         mockMvc.perform(get("/api/v1/courses")
                         .param("sortBy", "invalidField"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldIncrementEnrolledCount() throws Exception {
+        mockMvc.perform(patch("/api/v1/courses/1/seats/increment"))
+                .andExpect(status().isOk());
+        verify(courseService).incrementEnrolledCount(1L);
+    }
+
+    @Test
+    void shouldDecrementEnrolledCount() throws Exception {
+        mockMvc.perform(patch("/api/v1/courses/1/seats/decrement"))
+                .andExpect(status().isOk());
+        verify(courseService).decrementEnrolledCount(1L);
     }
 }

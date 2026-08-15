@@ -45,7 +45,8 @@ public class OutboxEventScheduler {
                     log.info("Sent outbox event: {} {}", event.getEventType(), event.getAggregateId());
                 });
             } catch (Exception e) {
-                log.error("Failed to send outbox event {}: {}", event.getId(), e.getMessage());
+                log.error("Failed to send outbox event {} (type={}, aggregateId={}): {}",
+                        event.getId(), event.getEventType(), event.getAggregateId(), e.getMessage(), e);
             }
         }
     }

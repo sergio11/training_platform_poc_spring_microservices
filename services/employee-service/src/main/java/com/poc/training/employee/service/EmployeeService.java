@@ -1,6 +1,7 @@
 package com.poc.training.employee.service;
 
 import tools.jackson.databind.ObjectMapper;
+import com.poc.training.employee.client.EnrollmentClient;
 import com.poc.training.employee.dto.EmployeeRequest;
 import com.poc.training.employee.dto.EmployeeResponse;
 import com.poc.training.employee.model.Employee;
@@ -15,6 +16,7 @@ import com.poc.training.shared.exception.BusinessException;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final OutboxEventRepository outboxEventRepository;
+    private final EnrollmentClient enrollmentClient;
     private final ObjectMapper objectMapper;
 
     public static EmployeeResponse toResponse(Employee employee) {
@@ -89,7 +92,20 @@ public class EmployeeService {
                 .keycloakUserId(request.getKeycloakUserId())
                 .build();
 
-        Employee saved = employeeRepository.save(employee);
+        Employee saved;
+        try {
+            saved = employeeRepository.save(employee);
+        } catch (DataIntegrityViolationException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("employee_number")) {
+                throw new BusinessException("Employee already exists with number: " + request.getEmployeeNumber());
+            }
+            if (msg != null && msg.contains("email")) {
+                throw new BusinessException("Employee already exists with email: " + request.getEmail());
+            }
+            throw new BusinessException("Employee already exists");
+        }
+
         log.info("Created employee: {} ({})", saved.getFullName(), saved.getEmployeeNumber());
 
         EmployeeCreatedEvent event = EmployeeCreatedEvent.builder()
@@ -142,6 +158,11 @@ public class EmployeeService {
     public void deactivate(Long id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+
+        if (enrollmentClient.hasActiveEnrollments(id)) {
+            throw new BusinessException("Cannot deactivate employee with active enrollments: " + id);
+        }
+
         employee.setActive(false);
         employeeRepository.save(employee);
         log.info("Deactivated employee: {} ({})", employee.getFullName(), employee.getEmployeeNumber());

@@ -1,6 +1,7 @@
 package com.poc.training.enrollment.config;
 
 import io.netty.channel.ChannelOption;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
 
+@Slf4j
 @Configuration
 public class WebClientConfig {
 
@@ -52,9 +54,15 @@ public class WebClientConfig {
         try {
             RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
             if (attrs instanceof ServletRequestAttributes servletAttrs) {
-                return servletAttrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+                String auth = servletAttrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+                if (auth == null) {
+                    log.debug("No Authorization header found in current request");
+                }
+                return auth;
             }
-        } catch (Exception ignored) {
+            log.debug("No ServletRequestAttributes in context — likely called from non-HTTP thread (e.g. RabbitMQ listener)");
+        } catch (Exception e) {
+            log.debug("Could not extract auth header: {}", e.getMessage());
         }
         return null;
     }

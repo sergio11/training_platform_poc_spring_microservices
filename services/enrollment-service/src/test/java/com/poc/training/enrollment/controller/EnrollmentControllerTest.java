@@ -3,6 +3,7 @@ package com.poc.training.enrollment.controller;
 import com.poc.training.enrollment.dto.EnrollmentRequest;
 import com.poc.training.enrollment.dto.EnrollmentResponse;
 import com.poc.training.enrollment.service.EnrollmentService;
+import com.poc.training.shared.exception.GlobalExceptionHandler;
 import com.poc.training.shared.security.JwtUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -11,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,9 +26,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @WebMvcTest(controllers = EnrollmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(GlobalExceptionHandler.class)
 @TestPropertySource(properties = {
     "spring.security.oauth2.resourceserver.jwt.issuer-uri="
 })
@@ -207,6 +211,24 @@ class EnrollmentControllerTest {
     }
 
     @Test
+    void shouldReturn400WhenEmployeeIdIsNegative() throws Exception {
+        mockMvc.perform(post("/api/v1/enrollments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"employeeId\":-1,\"courseId\":1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Failed"));
+    }
+
+    @Test
+    void shouldReturn400WhenCourseIdIsNegative() throws Exception {
+        mockMvc.perform(post("/api/v1/enrollments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"employeeId\":1,\"courseId\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Failed"));
+    }
+
+    @Test
     void shouldDenyEmployeeViewingOtherEnrollments() throws Exception {
         Jwt mockJwt = mock(Jwt.class);
         try (MockedStatic<JwtUtils> jwtUtils = mockStatic(JwtUtils.class)) {
@@ -341,5 +363,14 @@ class EnrollmentControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.employeeId").value(1));
         }
+    }
+
+    @Test
+    void shouldReturnActiveEnrollments() throws Exception {
+        when(enrollmentService.hasActiveEnrollments(1L)).thenReturn(true);
+
+        mockMvc.perform(get("/api/v1/enrollments/active/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("true"));
     }
 }

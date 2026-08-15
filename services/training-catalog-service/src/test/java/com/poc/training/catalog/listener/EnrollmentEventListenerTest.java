@@ -45,7 +45,7 @@ class EnrollmentEventListenerTest {
 
         enrollmentEventListener.handleEnrollmentApproved(event);
 
-        verify(courseService).incrementEnrolledCount(10L);
+        verify(courseService, never()).incrementEnrolledCount(anyLong());
         verify(processedEventRepository).save(argThat(pe ->
                 pe.getEventId().equals("evt-1") && pe.getEventType().equals("EnrollmentApprovedEvent")));
     }
@@ -70,7 +70,7 @@ class EnrollmentEventListenerTest {
     }
 
     @Test
-    void shouldHandleBusinessExceptionOnApproved() {
+    void shouldMarkApprovedEventAsProcessed() {
         EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
                 .eventId("evt-biz")
                 .courseId(10L)
@@ -81,8 +81,6 @@ class EnrollmentEventListenerTest {
                 .build();
 
         when(processedEventRepository.existsById("evt-biz")).thenReturn(false);
-        doThrow(new BusinessException("No available seats for course: 10"))
-                .when(courseService).incrementEnrolledCount(10L);
 
         enrollmentEventListener.handleEnrollmentApproved(event);
 
@@ -91,7 +89,7 @@ class EnrollmentEventListenerTest {
     }
 
     @Test
-    void shouldPropagateGenericExceptionOnApproved() {
+    void shouldHandleApprovedEventSaveFailure() {
         EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
                 .eventId("evt-err")
                 .courseId(10L)
@@ -103,12 +101,13 @@ class EnrollmentEventListenerTest {
 
         when(processedEventRepository.existsById("evt-err")).thenReturn(false);
         doThrow(new RuntimeException("DB connection lost"))
-                .when(courseService).incrementEnrolledCount(10L);
+                .when(processedEventRepository).save(any());
 
         assertThrows(RuntimeException.class,
                 () -> enrollmentEventListener.handleEnrollmentApproved(event));
 
-        verify(processedEventRepository, never()).save(any());
+        verify(processedEventRepository).save(argThat(pe ->
+                pe.getEventId().equals("evt-err")));
     }
 
     @Test
@@ -209,7 +208,7 @@ class EnrollmentEventListenerTest {
 
         enrollmentEventListener.handleEnrollmentApproved(event);
 
-        verify(courseService).incrementEnrolledCount(10L);
+        verify(courseService, never()).incrementEnrolledCount(anyLong());
     }
 
     @Test
@@ -233,7 +232,7 @@ class EnrollmentEventListenerTest {
     }
 
     @Test
-    void shouldHandleBusinessExceptionThenDataIntegrityViolationOnApproved() {
+    void shouldHandleDataIntegrityViolationOnApprovedEvent() {
         EnrollmentApprovedEvent event = EnrollmentApprovedEvent.builder()
                 .eventId("evt-biz-di")
                 .courseId(10L)
@@ -244,15 +243,12 @@ class EnrollmentEventListenerTest {
                 .build();
 
         when(processedEventRepository.existsById("evt-biz-di")).thenReturn(false);
-        doThrow(new BusinessException("No available seats"))
-                .when(courseService).incrementEnrolledCount(10L);
         doThrow(new DataIntegrityViolationException("Duplicate"))
                 .when(processedEventRepository).save(any());
 
         enrollmentEventListener.handleEnrollmentApproved(event);
 
-        verify(processedEventRepository, times(1)).save(argThat(pe ->
-                pe.getEventId().equals("evt-biz-di") && pe.getEventType().equals("EnrollmentApprovedEvent")));
+        verify(courseService, never()).incrementEnrolledCount(anyLong());
     }
 
     @Test

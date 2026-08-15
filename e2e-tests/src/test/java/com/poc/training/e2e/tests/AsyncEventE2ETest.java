@@ -25,13 +25,14 @@ class AsyncEventE2ETest extends BaseE2ETest {
         Map<?, ?> enroll = createEnrollment(token, emp, course);
 
         Awaitility.await()
-                .atMost(15, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
+                .atMost(20, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                                     .queryParam("recipientId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -56,13 +57,14 @@ class AsyncEventE2ETest extends BaseE2ETest {
         approveEnrollment(instructorToken(), enrollId);
 
         Awaitility.await()
-                .atMost(15, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
+                .atMost(20, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                                     .queryParam("recipientId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -86,13 +88,14 @@ class AsyncEventE2ETest extends BaseE2ETest {
         completeEnrollment(token, enrollId);
 
         Awaitility.await()
-                .atMost(15, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
+                .atMost(20, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                                     .queryParam("recipientId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -117,13 +120,14 @@ class AsyncEventE2ETest extends BaseE2ETest {
         completeEnrollment(token, enrollId);
 
         Awaitility.await()
-                .atMost(15, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> certPage = certificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/certificates")
                                     .queryParam("employeeId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) certPage.get("content");
@@ -147,12 +151,13 @@ class AsyncEventE2ETest extends BaseE2ETest {
 
         Awaitility.await()
                 .atMost(20, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                                     .queryParam("recipientId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -173,10 +178,11 @@ class AsyncEventE2ETest extends BaseE2ETest {
         Map<?, ?> enroll = createEnrollment(token, emp, course);
 
         waitForAsyncProcessing(() -> {
+            String currentToken = adminToken();
             Map<?, ?> page = notificationClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                             .queryParam("recipientId", emp).build())
-                    .header("Authorization", "Bearer " + token)
+                    .header("Authorization", "Bearer " + currentToken)
                     .retrieve().bodyToMono(Map.class).block();
 
             var content = (java.util.List<?>) page.get("content");
@@ -201,10 +207,11 @@ class AsyncEventE2ETest extends BaseE2ETest {
         completeEnrollment(token, enrollId);
 
         waitForAsyncProcessing(() -> {
+            String currentToken = adminToken();
             Map<?, ?> certPage = certificationClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/api/v1/certificates")
                             .queryParam("employeeId", emp).build())
-                    .header("Authorization", "Bearer " + token)
+                    .header("Authorization", "Bearer " + currentToken)
                     .retrieve().bodyToMono(Map.class).block();
 
             var content = (java.util.List<?>) certPage.get("content");

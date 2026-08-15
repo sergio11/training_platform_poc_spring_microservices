@@ -239,11 +239,6 @@ This document describes the architecture of the Corporate Training Platform, a m
   - `/api/v1/notifications` → Notification Service
   - `/api/v1/employees` → Employee Service
 
-### Config Server
-- **Purpose**: Centralized configuration management
-- **Port**: 8888
-- **Config files**: `application.yml` for each service
-
 ## Observability
 
 ### Prometheus
@@ -337,7 +332,6 @@ rake k8s:logs[training-catalog-service]
 | Certification Service | 8083 |
 | Notification Service | 8084 |
 | Employee Service | 8085 |
-| Config Server | 8888 |
 | PostgreSQL | 5432 |
 | RabbitMQ | 5672, 15672 |
 | Keycloak | 8080 |

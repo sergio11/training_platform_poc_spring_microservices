@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -29,6 +30,12 @@ public class EnrollmentController {
     );
 
     private final EnrollmentService enrollmentService;
+
+    @GetMapping("/active/{employeeId}")
+    @PreAuthorize("hasAnyRole('admin', 'instructor')")
+    public ResponseEntity<Boolean> hasActiveEnrollments(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(enrollmentService.hasActiveEnrollments(employeeId));
+    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('employee', 'instructor', 'admin')")

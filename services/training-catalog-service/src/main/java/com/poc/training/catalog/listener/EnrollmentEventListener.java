@@ -27,21 +27,10 @@ public class EnrollmentEventListener {
             return;
         }
         try {
-            courseService.incrementEnrolledCount(event.getCourseId());
             processedEventRepository.save(ProcessedEvent.builder()
                     .eventId(event.getEventId())
                     .eventType("EnrollmentApprovedEvent")
                     .build());
-        } catch (BusinessException e) {
-            log.warn("BusinessException processing enrollment.approved for courseId {}: {}", event.getCourseId(), e.getMessage());
-            try {
-                processedEventRepository.save(ProcessedEvent.builder()
-                        .eventId(event.getEventId())
-                        .eventType("EnrollmentApprovedEvent")
-                        .build());
-            } catch (DataIntegrityViolationException ignored) {
-                log.debug("ProcessedEvent already saved for eventId: {}", event.getEventId());
-            }
         } catch (DataIntegrityViolationException e) {
             log.debug("ProcessedEvent already saved for eventId: {} (concurrent processing)", event.getEventId());
         } catch (Exception e) {

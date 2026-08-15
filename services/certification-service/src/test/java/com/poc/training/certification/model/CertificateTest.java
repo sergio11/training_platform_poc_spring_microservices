@@ -48,4 +48,18 @@ class CertificateTest {
         Certificate cert = new Certificate(1L, "CERT-001", 1L, 1L, 1L, LocalDateTime.now());
         assertEquals("CERT-001", cert.getCertificateNumber());
     }
+
+    @Test
+    void shouldHaveCorrectToString() {
+        Certificate cert = Certificate.builder()
+                .id(1L)
+                .certificateNumber("CERT-TEST-123")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+        String str = cert.toString();
+        assertNotNull(str);
+        assertTrue(str.contains("CERT-TEST-123"));
+    }
 }

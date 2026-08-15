@@ -1,7 +1,5 @@
 package com.poc.training.notification.service;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import com.poc.training.notification.dto.NotificationResponse;
 import com.poc.training.notification.model.Notification;
 import com.poc.training.notification.model.NotificationStatus;
@@ -9,11 +7,8 @@ import com.poc.training.notification.model.NotificationType;
 import com.poc.training.notification.model.ProcessedEvent;
 import com.poc.training.notification.repository.NotificationRepository;
 import com.poc.training.notification.repository.ProcessedEventRepository;
-import com.poc.training.shared.model.OutboxEvent;
-import com.poc.training.shared.repository.OutboxEventRepository;
 import com.poc.training.notification.sender.NotificationSender;
 import com.poc.training.shared.event.*;
-import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +19,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
@@ -35,8 +29,6 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationSender notificationSender;
     private final ProcessedEventRepository processedEventRepository;
-    private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
 
     public static NotificationResponse toResponse(Notification notification) {
         return NotificationResponse.builder()
@@ -223,41 +215,10 @@ public class NotificationService {
             }
             saved.setStatus(NotificationStatus.DELIVERED);
             notificationRepository.save(saved);
-
-            NotificationSentEvent sentEvent = NotificationSentEvent.builder()
-                    .eventId(UUID.randomUUID().toString())
-                    .timestamp(LocalDateTime.now())
-                    .source("notification-service")
-                    .notificationId(saved.getId())
-                    .recipientId(recipientId)
-                    .notificationType(type.name())
-                    .referenceId(referenceId)
-                    .referenceType(referenceType)
-                    .build();
-
-            persistOutboxEvent("Notification", String.valueOf(saved.getId()), "NotificationSentEvent",
-                    sentEvent, RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT);
-            log.info("Persisted NotificationSentEvent to outbox for notification: {}", saved.getId());
+            log.info("Delivered notification {} of type {} for recipient: {}", saved.getId(), type, recipientId);
         } catch (Exception e) {
             log.error("Failed to process notification {}: {}", saved.getId(), e.getMessage());
             throw e;
-        }
-    }
-
-    private void persistOutboxEvent(String aggregateType, String aggregateId, String eventType,
-                                    Object event, String routingKey) {
-        try {
-            OutboxEvent outboxEvent = OutboxEvent.builder()
-                    .aggregateType(aggregateType)
-                    .aggregateId(aggregateId)
-                    .eventType(eventType)
-                    .payload(objectMapper.writeValueAsString(event))
-                    .routingKey(routingKey)
-                    .build();
-            outboxEventRepository.save(outboxEvent);
-        } catch (JacksonException e) {
-            log.error("Failed to serialize {} for outbox: {}", eventType, e.getMessage());
-            throw new RuntimeException("Failed to persist outbox event", e);
         }
     }
 }

@@ -80,4 +80,28 @@ class TrainingCatalogClientTest {
     void shouldHaveWebClientField() {
         assertNotNull(trainingCatalogClient);
     }
+
+    @Test
+    void shouldCallIncrementEnrolledCount() {
+        when(webClient.patch()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString(), eq(1L))).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.toBodilessEntity()).thenReturn(Mono.empty());
+
+        trainingCatalogClient.incrementEnrolledCount(1L);
+
+        verify(webClient).patch();
+    }
+
+    @Test
+    void shouldCallDecrementEnrolledCount() {
+        when(webClient.patch()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString(), eq(1L))).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.toBodilessEntity()).thenReturn(Mono.empty());
+
+        trainingCatalogClient.decrementEnrolledCount(1L);
+
+        verify(webClient).patch();
+    }
 }

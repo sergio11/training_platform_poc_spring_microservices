@@ -64,6 +64,12 @@ public class EnrollmentService {
         return toResponse(enrollment);
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasActiveEnrollments(Long employeeId) {
+        List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED);
+        return enrollmentRepository.existsByEmployeeIdAndStatusIn(employeeId, activeStatuses);
+    }
+
     @Transactional
     public EnrollmentResponse enroll(Long employeeId, Long courseId) {
         log.info("Processing enrollment for employee {} in course {}", employeeId, courseId);
@@ -72,7 +78,7 @@ public class EnrollmentService {
             throw new BusinessException("Employee not found with id: " + employeeId);
         }
 
-        CourseDTO course = trainingCatalogClient.getCourse(courseId);
+        trainingCatalogClient.getCourse(courseId);
 
         List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED, EnrollmentStatus.COMPLETED);
         List<Enrollment> existing = enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(
@@ -82,10 +88,6 @@ public class EnrollmentService {
             throw new BusinessException("Employee is already enrolled in this course");
         }
 
-        if (course.getEnrolledCount() >= course.getCapacity()) {
-            throw new BusinessException("No available seats for course: " + courseId);
-        }
-
         Enrollment enrollment = Enrollment.builder()
                 .employeeId(employeeId)
                 .courseId(courseId)
@@ -93,6 +95,14 @@ public class EnrollmentService {
                 .build();
 
         Enrollment saved = enrollmentRepository.save(enrollment);
+
+        try {
+            trainingCatalogClient.incrementEnrolledCount(courseId);
+        } catch (Exception e) {
+            log.warn("Failed to increment seat for course {}: {}", courseId, e.getMessage());
+            enrollmentRepository.delete(saved);
+            throw new BusinessException("No available seats for course: " + courseId);
+        }
 
         EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
@@ -214,10 +224,17 @@ public class EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
 
-        if (enrollment.getStatus() != EnrollmentStatus.PENDING && enrollment.getStatus() != EnrollmentStatus.APPROVED) {
-            throw new BusinessException(
-                "Cannot cancel enrollment in status: " + enrollment.getStatus() + ". Expected: PENDING or APPROVED"
-            );
+        if (enrollment.getStatus() == EnrollmentStatus.COMPLETED) {
+            throw new BusinessException("Cannot cancel a completed enrollment");
+        }
+        if (enrollment.getStatus() == EnrollmentStatus.REJECTED) {
+            throw new BusinessException("Cannot cancel a rejected enrollment");
+        }
+        if (enrollment.getStatus() == EnrollmentStatus.CANCELLED) {
+            throw new BusinessException("Enrollment is already cancelled");
+        }
+        if (enrollment.getStatus() == EnrollmentStatus.APPROVED) {
+            log.warn("Cancelling APPROVED enrollment {}: course may have already started", enrollmentId);
         }
 
         enrollment.setStatus(EnrollmentStatus.CANCELLED);

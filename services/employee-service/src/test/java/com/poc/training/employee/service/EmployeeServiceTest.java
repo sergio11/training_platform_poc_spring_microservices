@@ -1,5 +1,6 @@
 package com.poc.training.employee.service;
 
+import com.poc.training.employee.client.EnrollmentClient;
 import com.poc.training.employee.dto.EmployeeRequest;
 import com.poc.training.employee.dto.EmployeeResponse;
 import com.poc.training.employee.model.Employee;
@@ -33,6 +34,9 @@ class EmployeeServiceTest {
 
     @Mock
     private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private EnrollmentClient enrollmentClient;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -110,12 +114,23 @@ class EmployeeServiceTest {
     void shouldDeactivateEmployee() throws Exception {
         Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentClient.hasActiveEnrollments(1L)).thenReturn(false);
 
         employeeService.deactivate(1L);
 
         assertFalse(e.isActive());
         verify(employeeRepository).save(e);
         verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    void shouldThrowWhenDeactivatingEmployeeWithActiveEnrollments() {
+        Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentClient.hasActiveEnrollments(1L)).thenReturn(true);
+
+        assertThrows(BusinessException.class, () -> employeeService.deactivate(1L));
+        verify(employeeRepository, never()).save(any(Employee.class));
     }
 
     @Test
@@ -206,6 +221,7 @@ class EmployeeServiceTest {
     void shouldThrowWhenSerializationFailsOnDeactivate() throws Exception {
         Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));
+        when(enrollmentClient.hasActiveEnrollments(1L)).thenReturn(false);
         when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("Serialization error"));
 
         assertThrows(RuntimeException.class, () -> employeeService.deactivate(1L));
@@ -222,6 +238,73 @@ class EmployeeServiceTest {
         when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
         when(employeeRepository.findByEmail("existing@test.com")).thenReturn(
                 Optional.of(Employee.builder().id(1L).build()));
+
+        assertThrows(BusinessException.class, () -> employeeService.create(request));
+    }
+
+    @Test
+    void shouldThrowWhenSaveThrowsDataIntegrityViolationWithEmployeeNumber() {
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP003")
+                .fullName("Charlie")
+                .email("charlie@test.com")
+                .build();
+
+        when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
+        when(employeeRepository.findByEmail("charlie@test.com")).thenReturn(Optional.empty());
+        when(employeeRepository.save(any(Employee.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "duplicate key value violates unique constraint on employee_number"));
+
+        assertThrows(BusinessException.class, () -> employeeService.create(request));
+    }
+
+    @Test
+    void shouldThrowWhenSaveThrowsDataIntegrityViolationWithEmail() {
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP003")
+                .fullName("Charlie")
+                .email("charlie@test.com")
+                .build();
+
+        when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
+        when(employeeRepository.findByEmail("charlie@test.com")).thenReturn(Optional.empty());
+        when(employeeRepository.save(any(Employee.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "duplicate key value violates unique constraint on email"));
+
+        assertThrows(BusinessException.class, () -> employeeService.create(request));
+    }
+
+    @Test
+    void shouldThrowGenericWhenSaveThrowsDataIntegrityViolation() {
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP003")
+                .fullName("Charlie")
+                .email("charlie@test.com")
+                .build();
+
+        when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
+        when(employeeRepository.findByEmail("charlie@test.com")).thenReturn(Optional.empty());
+        when(employeeRepository.save(any(Employee.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "some other constraint violation"));
+
+        assertThrows(BusinessException.class, () -> employeeService.create(request));
+    }
+
+    @Test
+    void shouldThrowGenericWhenSaveThrowsDataIntegrityViolationWithNullMessage() {
+        EmployeeRequest request = EmployeeRequest.builder()
+                .employeeNumber("EMP003")
+                .fullName("Charlie")
+                .email("charlie@test.com")
+                .build();
+
+        when(employeeRepository.findByEmployeeNumber("EMP003")).thenReturn(Optional.empty());
+        when(employeeRepository.findByEmail("charlie@test.com")).thenReturn(Optional.empty());
+        when(employeeRepository.save(any(Employee.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(null));
 
         assertThrows(BusinessException.class, () -> employeeService.create(request));
     }

@@ -95,9 +95,9 @@ public abstract class BaseE2ETest {
                         .withCopyFileToContainer(
                                 MountableFile.forClasspathResource("keycloak/realm-export.json"),
                                 "/opt/keycloak/data/import/realm-export.json")
-                        .withStartupTimeout(Duration.ofSeconds(480))
+                        .withStartupTimeout(Duration.ofSeconds(600))
                         .waitingFor(Wait.forLogMessage(".*Listening on:.*", 1)
-                                .withStartupTimeout(Duration.ofSeconds(480)));
+                                .withStartupTimeout(Duration.ofSeconds(600)));
                 keycloak.start();
 
                 int keycloakPort = keycloak.getMappedPort(8080);
@@ -117,7 +117,7 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
                                 "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "true"));
+                                "spring.flyway.enabled", "false"));
 
                 catalogUrl = startService(
                         "com.poc.training.catalog.TrainingCatalogServiceApplication",
@@ -129,7 +129,7 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
                                 "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "true"));
+                                "spring.flyway.enabled", "false"));
 
                 enrollmentUrl = startService(
                         "com.poc.training.enrollment.EnrollmentServiceApplication",
@@ -141,7 +141,7 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
                                 "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "true",
+                                "spring.flyway.enabled", "false",
                                 "client.catalog.url", catalogUrl,
                                 "client.employee.url", employeeUrl));
 
@@ -155,7 +155,7 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
                                 "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "true"));
+                                "spring.flyway.enabled", "false"));
 
                 notificationUrl = startService(
                         "com.poc.training.notification.NotificationServiceApplication",
@@ -167,7 +167,7 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
                                 "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "true"));
+                                "spring.flyway.enabled", "false"));
 
                 catalogClient = WebClient.builder().baseUrl(catalogUrl)
                         .defaultHeader("Content-Type", "application/json").build();
@@ -190,6 +190,7 @@ public abstract class BaseE2ETest {
                 initialized = true;
             } catch (Exception e) {
                 log.error("E2E setup failed, cleaning up containers", e);
+                setupAttempted = false;
                 stopAll();
                 throw e;
             }

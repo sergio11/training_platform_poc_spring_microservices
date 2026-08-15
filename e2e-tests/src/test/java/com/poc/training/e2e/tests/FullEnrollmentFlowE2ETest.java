@@ -129,6 +129,19 @@ class FullEnrollmentFlowE2ETest extends BaseE2ETest {
     }
 
     @Test
+    @Order(8)
+    @DisplayName("Enrolled count was updated in catalog after approval")
+    void shouldVerifyEnrolledCountUpdated() {
+        waitForAsyncProcessing(() -> {
+            Map<?, ?> course = catalogClient.get()
+                    .uri("/api/v1/courses/{id}", courseId)
+                    .header("Authorization", "Bearer " + adminToken())
+                    .retrieve().bodyToMono(Map.class).block();
+            assertThat(course.get("enrolledCount")).isEqualTo(1);
+        });
+    }
+
+    @Test
     @Order(10)
     @DisplayName("Cannot enroll in same course twice (duplicate prevention)")
     void shouldPreventDuplicateEnrollment() {
