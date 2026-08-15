@@ -617,7 +617,7 @@ graph TD
     B -->|Validate JWT| B
     B -->|Forward with JWT| C[Microservice]
     C -->|Spring Security| D[Resource Server]
-    D -->|@PreAuthorize| E[Controller]
+    D -->|PreAuthorize| E[Controller]
     E -->|Ownership check| F[Service Layer]
 
     style B fill:#1a1a2e,color:#fff
@@ -654,17 +654,28 @@ graph TD
 
 ### Test Pyramid
 
-```
-                    ┌───────────┐
-                    │   E2E     │  Full stack (5 services + infra)
-                    │  ~50 tests│  Testcontainers + SpringApplicationBuilder
-                    ├───────────┤
-                   │ Integration│  Per-service with real PostgreSQL + RabbitMQ
-                   │   tests    │  Testcontainers
-                  ├─────────────┤
-                 │  Unit Tests  │  Mockito mocks, fast execution
-                 │   per class  │  Model, Service, Controller, Config
-                 └─────────────┘
+```mermaid
+flowchart TB
+    subgraph E2E["E2E Tests"]
+        E2E1["Full stack — 5 services + infra"]
+        E2E2["~50 tests — Testcontainers + SpringApplicationBuilder"]
+    end
+
+    subgraph Integration["Integration Tests"]
+        INT1["Per-service with real PostgreSQL + RabbitMQ"]
+        INT2["Testcontainers"]
+    end
+
+    subgraph Unit["Unit Tests"]
+        U1["Mockito mocks — fast execution"]
+        U2["Model, Service, Controller, Config"]
+    end
+
+    Unit --> Integration --> E2E
+
+    style E2E fill:#6DB33F,color:#fff
+    style Integration fill:#4a90d9,color:#fff
+    style Unit fill:#f5a623,color:#fff
 ```
 
 ### Unit Tests
