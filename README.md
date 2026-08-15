@@ -5,176 +5,86 @@
 [![JaCoCo 100%](https://img.shields.io/badge/JaCoCo-100%25-brightgreen?style=flat-square)](#coverage-report)
 [![License MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-Cloud-native microservices architecture for corporate training management. Built with Spring Boot 4, Kubernetes, Kong Gateway, Keycloak, RabbitMQ and OpenTelemetry — achieving 100% test coverage across all services.
-
-The **Corporate Training Platform** is a distributed system built on microservices for managing corporate training, enrollments, certifications, and notifications. It serves as a technological proof of concept to validate a cloud-native architecture based on:
-
-- **Spring Boot 4** / **Java 21** for high-performance reactive services
-- **Kubernetes** for container orchestration and horizontal scaling
-- **Kong Gateway** for API routing, JWT validation and rate limiting
-- **Keycloak** for centralized OAuth2/OIDC authentication
-- **RabbitMQ** for asynchronous, event-driven inter-service communication
-- **OpenTelemetry** for unified metrics, traces and logs
+Cloud-native microservices architecture for corporate training management.
+Built with Spring Boot 4, Kubernetes, Kong Gateway, Keycloak, RabbitMQ and OpenTelemetry — achieving 100% test coverage across all services.
 
 ---
 
-## Tech Stack
+## Why Spring Boot?
 
-### Core
+Spring Boot was chosen as the foundation for this POC after evaluating several alternatives. The decision was driven by the specific demands of a microservices architecture targeting production-grade patterns.
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Java | 21 | Programming language |
-| Spring Boot | 4.0.6 | Application framework |
-| Spring Cloud | 2025.1.2 | Distributed systems support |
-| Spring Security OAuth2 | Resource Server | JWT-based authentication |
-| Gradle | Kotlin DSL | Build automation |
-| Lombok | Managed by BOM | Boilerplate reduction |
-| Flyway | Managed by BOM | Database migration |
-| Jackson 3.x | Via shared module | JSON serialization |
+### Ecosystem Maturity
 
-### Persistence
+Spring Boot has the most mature ecosystem for building microservices in the JVM world. Spring Cloud provides battle-tested solutions for service discovery, configuration management, circuit breakers, and distributed tracing — all concerns that arise immediately when moving from a monolith to microservices. No other JVM framework offers this level of integrated infrastructure support out of the box.
 
-| Technology | Version | Purpose |
-|---|---|---|
-| PostgreSQL | 16-alpine | Primary database (database-per-service) |
-| Spring Data JPA | Managed by BOM | ORM and repository abstraction |
+### Reactive and Non-Blocking
 
-### Messaging
+Spring WebFlux enables high-concurrency request handling without blocking threads. The Enrollment Service uses `WebClient` (reactive HTTP client) for downstream calls to Employee and Training Catalog services, allowing the service to handle hundreds of concurrent requests without thread pool exhaustion. This is critical for a service that orchestrates multiple synchronous calls with resilience patterns.
 
-| Technology | Version | Purpose |
-|---|---|---|
-| RabbitMQ | 3.13-management-alpine | Asynchronous message broker |
-| Spring AMQP | Managed by BOM | RabbitMQ integration |
+### Spring Cloud Integration
 
-### Resilience
+Resilience4j integrates seamlessly with Spring Boot via Spring Cloud, providing circuit breaker and retry patterns with annotation-driven configuration (`@CircuitBreaker`, `@Retry`). This eliminates the need for custom resilience implementations and ensures consistent behavior across services.
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Resilience4j | Via Spring Cloud | Circuit Breaker + Retry |
+### Database-per-Service Pattern
 
-### Security
+Spring Data JPA with Flyway migrations makes the database-per-service pattern straightforward. Each microservice owns its database schema, and Flyway ensures reproducible, version-controlled migrations. PostgreSQL was chosen over MongoDB because the domain is highly relational (courses, enrollments, employees, certificates with foreign key relationships) and ACID transactions are required for the outbox pattern.
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Keycloak | 24.0.1 | OAuth2/OIDC Identity Provider |
-| Kong | 3.6 | API Gateway with JWT plugin |
+### Testcontainers Integration
 
-### Observability
+Spring Boot's native support for Testcontainers allows integration tests to spin up real PostgreSQL and RabbitMQ containers, ensuring tests run against the same infrastructure as production. This is how the project achieves 100% test coverage with meaningful integration tests — not just mocked interactions.
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Prometheus | v2.50.0 | Metrics collection and alerting |
-| Grafana | 10.3.1 | Dashboards and visualization |
-| Jaeger | 1.54 | Distributed tracing |
-| Loki | 2.9.4 | Log aggregation |
-| OpenTelemetry Collector | 0.94.0 (contrib) | Telemetry pipeline |
-| Micrometer | Managed by BOM | Metrics facade |
+### Why Not Alternatives?
 
-### Testing
-
-| Technology | Purpose |
+| Alternative | Why Spring Boot was preferred |
 |---|---|
-| JUnit 5 | Test framework |
-| Mockito | Mocking |
-| Testcontainers | Integration tests with real containers |
-| Awaitility | Async assertion polling |
-| GreenMail | Email testing (notification-service) |
-| JaCoCo | Code coverage (100% target) |
-
-### Containerization
-
-| Technology | Purpose |
-|---|---|
-| Podman / Docker | Container runtime |
-| Kubernetes | Container orchestration |
-| Multi-stage Dockerfiles | Optimized production images |
+| **Quarkus** | Smaller community, fewer production case studies, less mature Spring Cloud integration |
+| **Micronaut** | Compile-time DI is innovative but lacks the ecosystem depth of Spring |
+| **Node.js / Express** | No type safety, weaker concurrency model for CPU-bound operations, less mature security ecosystem |
+| **Go / Gin** | Excellent performance but smaller developer pool for enterprise Java shops, no equivalent to Spring Data JPA |
+| **.NET** | Strong platform but higher licensing costs and less flexibility in cloud-native tooling |
 
 ---
 
-## Project Structure
-
-```
-poc_architecture/
-├── services/
-│   ├── training-catalog-service/     # Course catalog management (8081)
-│   ├── enrollment-service/           # Employee enrollment (8082)
-│   ├── certification-service/        # Certificate issuance (8083)
-│   ├── notification-service/         # Automatic notifications (8084)
-│   └── employee-service/             # Employee records (8085)
-├── shared/                           # Shared library (events, DTOs, outbox, security)
-├── e2e-tests/                        # End-to-end test suite
-├── test-support/                     # Shared test utilities
-├── infra/
-│   ├── docker-compose.yml            # Local development stack
-│   ├── keycloak/                     # Keycloak realm configuration
-│   ├── kong/                         # Kong Gateway routes and plugins
-│   ├── otel/                         # OpenTelemetry Collector config
-│   ├── postgresql/                   # Database init scripts
-│   ├── prometheus/                   # Prometheus config + alert rules
-│   ├── rabbitmq/                     # RabbitMQ queue definitions
-│   ├── grafana/                      # Grafana dashboards and datasources
-│   └── k8s/                          # Full Kubernetes manifests
-├── build.gradle.kts                  # Root build configuration
-├── settings.gradle.kts               # Module declarations
-├── Rakefile                          # Automation tasks
-└── README.md                         # This file
-```
-
----
-
-## Architecture Overview
+## Architecture
 
 ### System Architecture
 
-```
-                                   ┌─────────────────────┐
-                                   │    Kong Gateway      │
-                                   │  (API Gateway:8000)  │
-                                   │  JWT + Rate Limiting  │
-                                   └──────────┬──────────┘
-                                              │
-           ┌──────────────────────────────────┼──────────────────────────────────┐
-           │                                  │                                  │
-           ▼                                  ▼                                  ▼
-┌─────────────────────┐          ┌─────────────────────┐          ┌─────────────────────┐
-│  Training Catalog   │          │    Enrollment       │          │   Certification     │
-│     Service         │          │     Service         │          │     Service         │
-│    (Port 8081)      │          │    (Port 8082)      │          │    (Port 8083)      │
-│                     │          │                     │          │                     │
-│  - Course CRUD      │◀─HTTP───│  - Enrollment CRUD  │          │  - Auto-generate    │
-│  - Seat tracking    │          │  - Seat validation  │          │    certificates     │
-│  - Event consumer   │          │  - Resilience4j     │          │  - Event producer   │
-└────────┬────────────┘          └────────┬────────────┘          └────────┬────────────┘
-         │          ▲                     │          │                      │
-         │          │                     │          │                      │
-         │  enrollment.approved           │          │                      │
-         │  enrollment.cancelled          │          │                      │
-         │          │                     │          │                      │
-         │          │                     ▼          │                      │
-         │          │          ┌─────────────────────┐                      │
-         │          │          │   Notification      │◀─────────────────────┘
-         │          │          │     Service         │◀── certificate.generated
-         │          └──────────│    (Port 8084)      │
-         │                     │                     │
-         │                     │  - Event consumer   │
-         │                     │  - Send notifs      │
-         │                     └─────────────────────┘
-         │
-┌────────┴────────────┐
-│   Employee          │
-│   Service           │
-│   (Port 8085)       │
-│                     │
-│  - Employee CRUD    │
-│  - Event producer   │
-└─────────────────────┘
+```mermaid
+flowchart TD
+    Client([Client]) --> Kong[Kong Gateway<br/>:8000<br/>JWT + Rate Limiting]
 
-                    ┌─────────────────────────────────────────────┐
-                    │              ASYNC BACKBONE                  │
-                    │              RabbitMQ (5672)                 │
-                    │         training.exchange (topic)            │
-                    └─────────────────────────────────────────────┘
+    Kong --> Catalog[Training Catalog Service<br/>:8081]
+    Kong --> Enrollment[Enrollment Service<br/>:8082]
+    Kong --> Certification[Certification Service<br/>:8083]
+    Kong --> Notification[Notification Service<br/>:8084]
+    Kong --> Employee[Employee Service<br/>:8085]
+
+    Enrollment -->|HTTP| Catalog
+    Enrollment -->|HTTP| Employee
+
+    Enrollment -->|outbox| RabbitMQ((RabbitMQ<br/>training.exchange))
+    Certification -->|outbox| RabbitMQ
+    Employee -->|outbox| RabbitMQ
+    Notification -->|outbox| RabbitMQ
+
+    RabbitMQ -->|enrollment.approved<br/>enrollment.cancelled| Catalog
+    RabbitMQ -->|course.completed| Certification
+    RabbitMQ -->|enrollment.*<br/>course.completed<br/>certificate.generated| Notification
+
+    Catalog --> DB1[(training_catalog)]
+    Enrollment --> DB2[(training_enrollment)]
+    Certification --> DB3[(training_certification)]
+    Notification --> DB4[(training_notification)]
+    Employee --> DB5[(training_employee)]
+
+    style Kong fill:#1a1a2e,color:#fff
+    style RabbitMQ fill:#ff6600,color:#fff
+    style Catalog fill:#6DB33F,color:#fff
+    style Enrollment fill:#6DB33F,color:#fff
+    style Certification fill:#6DB33F,color:#fff
+    style Notification fill:#6DB33F,color:#fff
+    style Employee fill:#6DB33F,color:#fff
 ```
 
 ### Architectural Style
@@ -324,8 +234,6 @@ DELETE /api/v1/employees/{id}                - Deactivate employee (soft delete)
 
 ## API Endpoints
 
-### Complete Endpoint Summary
-
 | Method | Endpoint | Service | Auth |
 |---|---|---|---|
 | `GET` | `/api/v1/courses` | Training Catalog | employee, instructor, admin |
@@ -378,79 +286,55 @@ DELETE /api/v1/employees/{id}                - Deactivate employee (soft delete)
 
 ### Event Flow Diagrams
 
-#### 1. Enrollment Created
-```
-┌─────────────────┐      ┌─────────────┐      ┌─────────────────┐
-│  Enrollment     │─outbox▶  RabbitMQ  │─────▶│  Notification   │
-│  Service        │      │  (enrollment│      │  Service        │
-│                 │      │   .created) │      │  (send notif)   │
-└─────────────────┘      └─────────────┘      └─────────────────┘
+#### Enrollment Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant E as Employee
+    participant EN as Enrollment Service
+    participant MQ as RabbitMQ
+    participant TC as Training Catalog
+    participant N as Notification Service
+    participant C as Certification Service
+
+    E->>EN: POST /enrollments (create)
+    EN->>EN: Pessimistic lock + save
+    EN->>MQ: enrollment.created (outbox)
+    MQ->>N: Send notification
+
+    E->>EN: PATCH /enrollments/{id}/approve
+    EN->>EN: Approve enrollment
+    EN->>MQ: enrollment.approved (outbox)
+    MQ->>TC: Increment enrolledCount
+    MQ->>N: Send notification
+
+    E->>EN: PATCH /enrollments/{id}/complete
+    EN->>EN: Complete enrollment
+    EN->>MQ: course.completed (outbox)
+    MQ->>C: Generate certificate
+    MQ->>N: Send notification
+    C->>MQ: certificate.generated (outbox)
+    MQ->>N: Send certificate notification
 ```
 
-#### 2. Enrollment Approved
-```
-┌─────────────────┐      ┌─────────────┐      ┌─────────────────┐
-│  Enrollment     │─outbox▶  RabbitMQ  │─────▶│  Notification   │
-│  Service        │      │  (enrollment│      │  Service        │
-│                 │      │   .approved)│      │  (send notif)   │
-└─────────────────┘      └──────┬──────┘      └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │  Training       │
-                       │  Catalog        │
-                       │  Service        │
-                       │  (+enrolledCount)│
-                       └─────────────────┘
-```
+#### Employee Lifecycle
 
-#### 3. Enrollment Cancelled
-```
-┌─────────────────┐      ┌─────────────┐      ┌─────────────────┐
-│  Enrollment     │─outbox▶  RabbitMQ  │─────▶│  Notification   │
-│  Service        │      │  (enrollment│      │  Service        │
-│                 │      │   .cancelled)│     │  (send notif)   │
-└─────────────────┘      └──────┬──────┘      └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │  Training       │
-                       │  Catalog        │
-                       │  Service        │
-                       │  (-enrolledCount)│
-                       └─────────────────┘
-```
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant ES as Employee Service
+    participant MQ as RabbitMQ
+    participant N as Notification Service
 
-#### 4. Course Completed
-```
-┌─────────────────┐      ┌─────────────┐      ┌─────────────────┐
-│  Enrollment     │─outbox▶  RabbitMQ  │─────▶│  Certification  │
-│  Service        │      │  (course.   │      │  Service        │
-│                 │      │  completed) │      │  (gen cert)     │
-└─────────────────┘      └─────────────┘      └────────┬────────┘
-                                                       │
-                                                       ▼
-                                              ┌─────────────────┐
-                                              │  RabbitMQ       │
-                                              │  (certificate.  │
-                                              │   generated)    │
-                                              └────────┬────────┘
-                                                       │
-                                                       ▼
-                                              ┌─────────────────┐
-                                              │  Notification   │
-                                              │  Service        │
-                                              └─────────────────┘
-```
+    A->>ES: POST /employees (create)
+    ES->>ES: Save employee
+    ES->>MQ: employee.created (outbox)
+    MQ->>N: Send notification
 
-#### 5. Employee Lifecycle
-```
-┌─────────────────┐      ┌─────────────────────┐      ┌─────────────────┐
-│  Employee       │─outbox▶  RabbitMQ          │─────▶│  Notification   │
-│  Service        │      │  (employee.         │      │  Service        │
-│                 │      │   created/updated/  │      │                 │
-│                 │      │   deactivated)      │      │                 │
-└─────────────────┘      └─────────────────────┘      └─────────────────┘
+    A->>ES: DELETE /employees/{id}
+    ES->>ES: Soft deactivate
+    ES->>MQ: employee.deactivated (outbox)
+    MQ->>N: Send notification
 ```
 
 ---
@@ -465,25 +349,19 @@ DELETE /api/v1/employees/{id}                - Deactivate employee (soft delete)
 
 **Solution**: Events are persisted to an `outbox_events` table within the same DB transaction as the business operation. A scheduler (`OutboxEventScheduler`) polls for unprocessed events every 5 seconds and publishes them to RabbitMQ.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    TRANSACTIONAL OUTBOX FLOW                      │
-│                                                                  │
-│  1. Business operation + event write (same DB transaction)       │
-│     BEGIN TX                                                     │
-│       INSERT INTO enrollments (...)                              │
-│       INSERT INTO outbox_events (eventType, payload, ...)       │
-│     COMMIT TX                                                    │
-│                                                                  │
-│  2. Scheduler polls (every 5s)                                   │
-│     SELECT * FROM outbox_events WHERE processed = false          │
-│                                                                  │
-│  3. Publish to RabbitMQ                                          │
-│     rabbitTemplate.convertAndSend(exchange, routingKey, event)   │
-│                                                                  │
-│  4. Mark as processed                                            │
-│     UPDATE outbox_events SET processed = true WHERE id = ...     │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph "Same DB Transaction"
+        A[Business Operation] --> B[Save Entity]
+        A --> C[Save Outbox Event]
+    end
+
+    C --> D{Scheduler<br/>every 5s}
+    D -->|processed = false| E[Publish to RabbitMQ]
+    E --> F[Mark as processed]
+
+    style A fill:#6DB33F,color:#fff
+    style E fill:#ff6600,color:#fff
 ```
 
 **Guarantee**: At-least-once delivery. Consumers must be idempotent.
@@ -494,7 +372,6 @@ DELETE /api/v1/employees/{id}                - Deactivate employee (soft delete)
 
 **Used by**: Enrollment Service for synchronous calls to Employee Service and Training Catalog Service.
 
-**Configuration**:
 | Parameter | Value |
 |---|---|
 | Sliding window size | 10 calls |
@@ -504,11 +381,13 @@ DELETE /api/v1/employees/{id}                - Deactivate employee (soft delete)
 | Retry max attempts | 3 |
 | Retry wait duration | 500ms |
 
-**Flow**:
-```
-CLOSED ──(failures > 50%)──▶ OPEN ──(10s wait)──▶ HALF-OPEN ──(3 calls)──▶ CLOSED
-   ▲                                                                   │
-   └─────────────────────(failures > 50%)──────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> OPEN: Failures > 50%
+    OPEN --> HALF_OPEN: Wait 10s
+    HALF_OPEN --> CLOSED: 3 calls succeed
+    HALF_OPEN --> OPEN: Any call fails
 ```
 
 **Fallback**: Throws `ServiceUnavailableException` (HTTP 503) when the circuit is open.
@@ -576,10 +455,12 @@ Instead of physical deletion, records are marked as inactive (`active = false`).
 
 **Used by**: Notification Service.
 
-```
-NotificationSender (interface)
-├── SimulatedNotificationSender  ──@Profile("local","test")──▶ Logs the notification
-└── EmailNotificationSender      ──@Profile("email")──────────▶ Sends via JavaMailSender
+```mermaid
+flowchart LR
+    A[NotificationSender<br/>interface] --> B[SimulatedNotificationSender<br/>@Profile: local, test]
+    A --> C[EmailNotificationSender<br/>@Profile: email]
+    B --> D[Log the notification]
+    C --> E[Send via JavaMailSender]
 ```
 
 ---
@@ -665,6 +546,7 @@ All resources deployed to the `training-platform` namespace:
 | **CORS** | Allows `localhost:3000` and `localhost:5173` |
 
 **Routes**:
+
 | Path | Service | Methods |
 |---|---|---|
 | `/api/v1/courses` | Training Catalog | GET, POST, PUT, DELETE, PATCH |
@@ -686,20 +568,15 @@ All resources deployed to the `training-platform` namespace:
 
 ## Observability
 
-### Architecture Flow
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Services    │────▶│  OTel        │────▶│  Jaeger      │  (traces)
-│  (Micrometer │     │  Collector   │────▶│  Prometheus  │  (metrics)
-│   + OTLP)    │     │              │────▶│  Loki        │  (logs)
-└──────────────┘     └──────────────┘     └──────┬───────┘
-                                                  │
-                                                  ▼
-                                           ┌──────────────┐
-                                           │   Grafana    │
-                                           │  (dashboards)│
-                                           └──────────────┘
+```mermaid
+flowchart LR
+    S[Microservices<br/>Micrometer + OTLP] --> OC[OTel Collector<br/>:4317, :4318]
+    OC --> J[Jaeger<br/>:16686<br/>Traces]
+    OC --> P[Prometheus<br/>:9090<br/>Metrics]
+    OC --> L[Loki<br/>:3100<br/>Logs]
+    P --> G[Grafana<br/>:3000<br/>Dashboards]
+    J --> G
+    L --> G
 ```
 
 ### Prometheus (Metrics)
@@ -734,6 +611,19 @@ All resources deployed to the `training-platform` namespace:
 
 ## Security
 
+```mermaid
+graph TD
+    A[Client] -->|JWT Bearer| B[Kong Gateway]
+    B -->|Validate JWT| B
+    B -->|Forward with JWT| C[Microservice]
+    C -->|Spring Security| D[Resource Server]
+    D -->|@PreAuthorize| E[Controller]
+    E -->|Ownership check| F[Service Layer]
+
+    style B fill:#1a1a2e,color:#fff
+    style D fill:#6DB33F,color:#fff
+```
+
 ### Authentication
 
 | Aspect | Detail |
@@ -757,20 +647,6 @@ All resources deployed to the `training-platform` namespace:
 - Enrollment, Certificate, and Notification controllers verify that **employee-role users can only access their own resources**
 - Employee ID is extracted from the `employeeId` JWT claim (custom protocol mapper in Keycloak)
 - Implemented via `JwtUtils.isEmployeeOnly()` and `JwtUtils.extractEmployeeIdAsLong()`
-
-### Security Summary
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     SECURITY LAYERS                              │
-│                                                                  │
-│  1. Kong Gateway     ── JWT validation + Rate limiting           │
-│  2. Spring Security  ── Resource Server (JWT + RBAC)             │
-│  3. Method Security  ── @PreAuthorize on controllers             │
-│  4. Data Access      ── Ownership verification in service layer  │
-│  5. Network          ── Kubernetes NetworkPolicies (planned)     │
-└─────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -820,7 +696,6 @@ Located in `/e2e-tests/`, using `BaseE2ETest` which:
 - Creates 5 separate databases
 - Provides WebClient instances and JWT token helpers (admin, instructor, employee)
 
-**E2E Test Classes**:
 | Class | Tests | Coverage |
 |---|---|---|
 | `FullEnrollmentFlowE2ETest` | 12 | Complete business flow |
@@ -859,24 +734,6 @@ All tests executed with `--rerun-tasks --no-build-cache` for deterministic resul
 
 ---
 
-## Known Limitations
-
-The following items are identified improvement areas or known limitations:
-
-| # | Category | Description |
-|---|---|---|
-| 1 | **SRS Gap** | The SRS references a Config Server and Tempo, but neither is implemented. The Rakefile references `infra/k8s/config-server/` which does not exist — `rake k8s:deploy` will fail at that step. |
-| 2 | **HTTP Client Inconsistency** | Employee Service uses `RestTemplate` for `EnrollmentClient`, while Enrollment Service uses `WebClient` for downstream calls. Should be unified to WebClient. |
-| 3 | **Outbox Type Resolution** | `OutboxEventScheduler.resolveEventType()` uses a hardcoded switch statement mapping event type strings to class names. Adding a new event requires modifying the shared module. |
-| 4 | **DLQ Handling** | All DLQ listeners only log the failed message. No retry mechanism, alerting, or manual reprocessing capability exists. |
-| 5 | **Race Condition** | Enrollment flow saves the enrollment then calls `incrementEnrolledCount` via HTTP. If increment fails, the enrollment is deleted. Between save and increment, concurrent enrollments could cause over-enrollment. Documented in `EdgeCaseE2ETest.concurrentEnrollmentSameCourse`. |
-| 6 | **Notification Status** | `NotificationStatus.SENT` exists but is never used. Flow goes directly from `PENDING` to `DELIVERED`. |
-| 7 | **Hardcoded Secrets** | Keycloak client secrets and user passwords are hardcoded in `realm-export.json`. Suitable for POC, not for production. |
-| 8 | **Certificate Redundancy** | `DatabaseInitializer` in Certification Service creates the sequence via `@PostConstruct`, but Flyway migration `V3` also creates it — redundant. |
-| 9 | **K8s Secrets** | All Kubernetes Secret manifests use plaintext `stringData`. Should use external secret management for production. |
-
----
-
 ## Quick Start
 
 ### Prerequisites
@@ -908,7 +765,7 @@ Executes unit tests, integration tests (Testcontainers), generates JaCoCo report
 rake k8s:deploy
 ```
 
-> **Note**: Requires a running Kubernetes cluster and `kubectl` configured. The `config-server` directory is missing — see [Known Limitations](#known-limitations).
+> **Note**: Requires a running Kubernetes cluster and `kubectl` configured.
 
 ### 4. Tear Down
 
