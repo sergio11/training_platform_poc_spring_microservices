@@ -7,8 +7,6 @@
 
 Cloud-native microservices architecture for corporate training management. Built with Spring Boot 4, Kubernetes, Kong Gateway, Keycloak, RabbitMQ and OpenTelemetry — achieving 100% test coverage across all services.
 
-## Description
-
 The **Corporate Training Platform** is a distributed system built on microservices for managing corporate training, enrollments, certifications, and notifications. It serves as a technological proof of concept to validate a cloud-native architecture based on:
 
 - **Spring Boot 4** / **Java 21** for high-performance reactive services
