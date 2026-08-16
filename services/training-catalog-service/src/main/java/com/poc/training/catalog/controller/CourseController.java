@@ -90,14 +90,14 @@ public class CourseController {
     }
 
     @PatchMapping("/{id}/seats/increment")
-    @PreAuthorize("hasAnyRole('admin')")
+    @PreAuthorize("hasAnyRole('instructor', 'admin')")
     public ResponseEntity<Void> incrementEnrolledCount(@PathVariable Long id) {
         courseService.incrementEnrolledCount(id);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{id}/seats/decrement")
-    @PreAuthorize("hasAnyRole('admin')")
+    @PreAuthorize("hasAnyRole('instructor', 'admin')")
     public ResponseEntity<Void> decrementEnrolledCount(@PathVariable Long id) {
         courseService.decrementEnrolledCount(id);
         return ResponseEntity.ok().build();

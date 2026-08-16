@@ -6,6 +6,7 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 public class RabbitMQConfig {
@@ -17,6 +18,7 @@ public class RabbitMQConfig {
     public static final String QUEUE_ENROLLMENT_REJECTED = "notification.enrollment.rejected";
     public static final String QUEUE_ENROLLMENT_CANCELLED = "notification.enrollment.cancelled";
     public static final String QUEUE_COURSE_COMPLETED = "notification.course.completed";
+    public static final String QUEUE_EMPLOYEE_UPDATED = "notification.employee.updated";
 
     @Bean
     public TopicExchange trainingExchange() {
@@ -85,6 +87,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue employeeUpdatedQueue() {
+        return QueueBuilder.durable(QUEUE_EMPLOYEE_UPDATED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
     public Binding enrollmentCreatedBinding(Queue enrollmentCreatedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(enrollmentCreatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED);
     }
@@ -115,6 +125,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding employeeUpdatedBinding(Queue employeeUpdatedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(employeeUpdatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_EMPLOYEE_UPDATED);
+    }
+
+    @Bean
     public Binding notificationSentBinding(Queue notificationSentQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(notificationSentQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_NOTIFICATION_SENT);
     }
@@ -125,7 +140,7 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public MessageConverter jsonMessageConverter() {
-        return new Jackson3JsonMessageConverter();
+    public MessageConverter jsonMessageConverter(ObjectMapper objectMapper) {
+        return new Jackson3JsonMessageConverter(objectMapper);
     }
 }

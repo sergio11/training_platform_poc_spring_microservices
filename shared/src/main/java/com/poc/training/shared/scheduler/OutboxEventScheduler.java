@@ -14,11 +14,25 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class OutboxEventScheduler {
+
+    private static final Map<String, String> EVENT_TYPE_MAP = Map.ofEntries(
+            Map.entry("EnrollmentCreatedEvent", "com.poc.training.shared.event.EnrollmentCreatedEvent"),
+            Map.entry("EnrollmentApprovedEvent", "com.poc.training.shared.event.EnrollmentApprovedEvent"),
+            Map.entry("EnrollmentRejectedEvent", "com.poc.training.shared.event.EnrollmentRejectedEvent"),
+            Map.entry("EnrollmentCancelledEvent", "com.poc.training.shared.event.EnrollmentCancelledEvent"),
+            Map.entry("CourseCompletedEvent", "com.poc.training.shared.event.CourseCompletedEvent"),
+            Map.entry("CertificateGeneratedEvent", "com.poc.training.shared.event.CertificateGeneratedEvent"),
+            Map.entry("EmployeeCreatedEvent", "com.poc.training.shared.event.EmployeeCreatedEvent"),
+            Map.entry("EmployeeUpdatedEvent", "com.poc.training.shared.event.EmployeeUpdatedEvent"),
+            Map.entry("EmployeeDeactivatedEvent", "com.poc.training.shared.event.EmployeeDeactivatedEvent"),
+            Map.entry("NotificationSentEvent", "com.poc.training.shared.event.NotificationSentEvent")
+    );
 
     private final OutboxEventRepository outboxEventRepository;
     private final RabbitTemplate rabbitTemplate;
@@ -52,18 +66,10 @@ public class OutboxEventScheduler {
     }
 
     private String resolveEventType(String eventType) {
-        return switch (eventType) {
-            case "EnrollmentCreatedEvent" -> "com.poc.training.shared.event.EnrollmentCreatedEvent";
-            case "EnrollmentApprovedEvent" -> "com.poc.training.shared.event.EnrollmentApprovedEvent";
-            case "EnrollmentRejectedEvent" -> "com.poc.training.shared.event.EnrollmentRejectedEvent";
-            case "EnrollmentCancelledEvent" -> "com.poc.training.shared.event.EnrollmentCancelledEvent";
-            case "CourseCompletedEvent" -> "com.poc.training.shared.event.CourseCompletedEvent";
-            case "CertificateGeneratedEvent" -> "com.poc.training.shared.event.CertificateGeneratedEvent";
-            case "EmployeeCreatedEvent" -> "com.poc.training.shared.event.EmployeeCreatedEvent";
-            case "EmployeeUpdatedEvent" -> "com.poc.training.shared.event.EmployeeUpdatedEvent";
-            case "EmployeeDeactivatedEvent" -> "com.poc.training.shared.event.EmployeeDeactivatedEvent";
-            case "NotificationSentEvent" -> "com.poc.training.shared.event.NotificationSentEvent";
-            default -> throw new IllegalArgumentException("Unknown event type: " + eventType);
-        };
+        String fqcn = EVENT_TYPE_MAP.get(eventType);
+        if (fqcn == null) {
+            throw new IllegalArgumentException("Unknown event type: " + eventType);
+        }
+        return fqcn;
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 public class RabbitMQConfig {
@@ -34,6 +35,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue enrollmentRejectedQueue() {
+        return QueueBuilder.durable(RabbitMQConstants.QUEUE_ENROLLMENT_REJECTED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey(DLQ)
+                .build();
+    }
+
+    @Bean
     public Queue deadLetterQueue() {
         return QueueBuilder.durable(DLQ).build();
     }
@@ -49,12 +58,17 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding enrollmentRejectedBinding(Queue enrollmentRejectedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(enrollmentRejectedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_REJECTED);
+    }
+
+    @Bean
     public Binding deadLetterBinding(Queue deadLetterQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(deadLetterQueue).to(trainingExchange).with(DLQ);
     }
 
     @Bean
-    public MessageConverter jsonMessageConverter() {
-        return new Jackson3JsonMessageConverter();
+    public MessageConverter jsonMessageConverter(ObjectMapper objectMapper) {
+        return new Jackson3JsonMessageConverter(objectMapper);
     }
 }

@@ -22,6 +22,18 @@
       "auto_delete": false
     },
     {
+      "name": "enrollment.rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "enrollment.cancelled",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
       "name": "course.completed",
       "vhost": "/",
       "durable": true,
@@ -34,7 +46,37 @@
       "auto_delete": false
     },
     {
-      "name": "enrollment.rejected",
+      "name": "notification.sent",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "employee.created",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "employee.deactivated",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "employee.updated",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "catalog.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "certification.dlq",
       "vhost": "/",
       "durable": true,
       "auto_delete": false
@@ -46,13 +88,49 @@
       "auto_delete": false
     },
     {
-      "name": "notification.sent",
+      "name": "certification.course.completed",
       "vhost": "/",
       "durable": true,
       "auto_delete": false
     },
     {
-      "name": "certification.dlq",
+      "name": "notification.enrollment.created",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.enrollment.approved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.enrollment.rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.enrollment.cancelled",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.course.completed",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.certificate.generated",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "notification.notification.sent",
       "vhost": "/",
       "durable": true,
       "auto_delete": false
@@ -86,6 +164,14 @@
     {
       "source": "training.exchange",
       "vhost": "/",
+      "destination": "enrollment.cancelled",
+      "destination_type": "queue",
+      "routing_key": "enrollment.cancelled",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
       "destination": "course.completed",
       "destination_type": "queue",
       "routing_key": "course.completed",
@@ -102,14 +188,6 @@
     {
       "source": "training.exchange",
       "vhost": "/",
-      "destination": "notification.dlq",
-      "destination_type": "queue",
-      "routing_key": "notification.dlq",
-      "arguments": {}
-    },
-    {
-      "source": "training.exchange",
-      "vhost": "/",
       "destination": "notification.sent",
       "destination_type": "queue",
       "routing_key": "notification.sent",
@@ -118,9 +196,113 @@
     {
       "source": "training.exchange",
       "vhost": "/",
+      "destination": "employee.created",
+      "destination_type": "queue",
+      "routing_key": "employee.created",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "employee.deactivated",
+      "destination_type": "queue",
+      "routing_key": "employee.deactivated",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "employee.updated",
+      "destination_type": "queue",
+      "routing_key": "employee.updated",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "catalog.dlq",
+      "destination_type": "queue",
+      "routing_key": "catalog.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
       "destination": "certification.dlq",
       "destination_type": "queue",
       "routing_key": "certification.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.dlq",
+      "destination_type": "queue",
+      "routing_key": "notification.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "certification.course.completed",
+      "destination_type": "queue",
+      "routing_key": "course.completed",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.enrollment.created",
+      "destination_type": "queue",
+      "routing_key": "enrollment.created",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.enrollment.approved",
+      "destination_type": "queue",
+      "routing_key": "enrollment.approved",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.enrollment.rejected",
+      "destination_type": "queue",
+      "routing_key": "enrollment.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.enrollment.cancelled",
+      "destination_type": "queue",
+      "routing_key": "enrollment.cancelled",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.course.completed",
+      "destination_type": "queue",
+      "routing_key": "course.completed",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.certificate.generated",
+      "destination_type": "queue",
+      "routing_key": "certificate.generated",
+      "arguments": {}
+    },
+    {
+      "source": "training.exchange",
+      "vhost": "/",
+      "destination": "notification.notification.sent",
+      "destination_type": "queue",
+      "routing_key": "notification.sent",
       "arguments": {}
     }
   ]

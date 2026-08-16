@@ -130,6 +130,8 @@ POST   /api/v1/courses                 - Create course                    [admin
 PUT    /api/v1/courses/{id}            - Update course                    [instructor, admin]
 DELETE /api/v1/courses/{id}            - Deactivate course (soft delete)  [admin]
 PATCH  /api/v1/courses/{id}/complete   - Mark course as completed         [instructor, admin]
+PATCH  /api/v1/courses/{id}/seats/increment - Increment enrolled count   [instructor, admin]
+PATCH  /api/v1/courses/{id}/seats/decrement - Decrement enrolled count   [instructor, admin]
 ```
 
 ---
@@ -243,6 +245,8 @@ DELETE /api/v1/employees/{id}                - Deactivate employee (soft delete)
 | `PUT` | `/api/v1/courses/{id}` | Training Catalog | instructor, admin |
 | `DELETE` | `/api/v1/courses/{id}` | Training Catalog | admin |
 | `PATCH` | `/api/v1/courses/{id}/complete` | Training Catalog | instructor, admin |
+| `PATCH` | `/api/v1/courses/{id}/seats/increment` | Training Catalog | instructor, admin |
+| `PATCH` | `/api/v1/courses/{id}/seats/decrement` | Training Catalog | instructor, admin |
 | `GET` | `/api/v1/enrollments` | Enrollment | employee*, instructor, admin |
 | `GET` | `/api/v1/enrollments/active/{empId}` | Enrollment | admin, instructor |
 | `GET` | `/api/v1/enrollments/{id}` | Enrollment | employee*, instructor, admin |

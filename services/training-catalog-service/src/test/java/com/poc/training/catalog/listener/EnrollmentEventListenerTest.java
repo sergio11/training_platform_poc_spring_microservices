@@ -5,6 +5,7 @@ import com.poc.training.catalog.repository.ProcessedEventRepository;
 import com.poc.training.catalog.service.CourseService;
 import com.poc.training.shared.event.EnrollmentApprovedEvent;
 import com.poc.training.shared.event.EnrollmentCancelledEvent;
+import com.poc.training.shared.event.EnrollmentRejectedEvent;
 import com.poc.training.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -272,5 +273,129 @@ class EnrollmentEventListenerTest {
 
         verify(processedEventRepository, times(1)).save(argThat(pe ->
                 pe.getEventId().equals("evt-cancel-biz-di") && pe.getEventType().equals("EnrollmentCancelledEvent")));
+    }
+
+    @Test
+    void shouldProcessEnrollmentRejectedEvent() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId("evt-reject-1")
+                .courseId(30L)
+                .employeeId(3L)
+                .enrollmentId(300L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-reject-1")).thenReturn(false);
+
+        enrollmentEventListener.handleEnrollmentRejected(event);
+
+        verify(courseService).decrementEnrolledCount(30L);
+        verify(processedEventRepository).save(argThat(pe ->
+                pe.getEventId().equals("evt-reject-1") && pe.getEventType().equals("EnrollmentRejectedEvent")));
+    }
+
+    @Test
+    void shouldSkipAlreadyProcessedRejectedEvent() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId("evt-reject-dup")
+                .courseId(30L)
+                .employeeId(3L)
+                .enrollmentId(300L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-reject-dup")).thenReturn(true);
+
+        enrollmentEventListener.handleEnrollmentRejected(event);
+
+        verify(courseService, never()).decrementEnrolledCount(anyLong());
+        verify(processedEventRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldHandleBusinessExceptionOnRejected() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId("evt-reject-biz")
+                .courseId(30L)
+                .employeeId(3L)
+                .enrollmentId(300L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-reject-biz")).thenReturn(false);
+        doThrow(new BusinessException("Cannot decrement enrolled count for course: 30. Count is already 0."))
+                .when(courseService).decrementEnrolledCount(30L);
+
+        enrollmentEventListener.handleEnrollmentRejected(event);
+
+        verify(processedEventRepository).save(argThat(pe ->
+                pe.getEventId().equals("evt-reject-biz") && pe.getEventType().equals("EnrollmentRejectedEvent")));
+    }
+
+    @Test
+    void shouldHandleBusinessExceptionThenDataIntegrityViolationOnRejected() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId("evt-reject-biz-di")
+                .courseId(30L)
+                .employeeId(3L)
+                .enrollmentId(300L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-reject-biz-di")).thenReturn(false);
+        doThrow(new BusinessException("Cannot decrement count"))
+                .when(courseService).decrementEnrolledCount(30L);
+        doThrow(new DataIntegrityViolationException("Duplicate"))
+                .when(processedEventRepository).save(any());
+
+        enrollmentEventListener.handleEnrollmentRejected(event);
+
+        verify(processedEventRepository, times(1)).save(argThat(pe ->
+                pe.getEventId().equals("evt-reject-biz-di") && pe.getEventType().equals("EnrollmentRejectedEvent")));
+    }
+
+    @Test
+    void shouldHandleDataIntegrityViolationOnRejected() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId("evt-reject-di")
+                .courseId(30L)
+                .employeeId(3L)
+                .enrollmentId(300L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-reject-di")).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("Duplicate"))
+                .when(processedEventRepository).save(any());
+
+        enrollmentEventListener.handleEnrollmentRejected(event);
+
+        verify(courseService).decrementEnrolledCount(30L);
+    }
+
+    @Test
+    void shouldPropagateGenericExceptionOnRejected() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId("evt-reject-err")
+                .courseId(30L)
+                .employeeId(3L)
+                .enrollmentId(300L)
+                .source("enrollment-service")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        when(processedEventRepository.existsById("evt-reject-err")).thenReturn(false);
+        doThrow(new RuntimeException("Timeout"))
+                .when(courseService).decrementEnrolledCount(30L);
+
+        assertThrows(RuntimeException.class,
+                () -> enrollmentEventListener.handleEnrollmentRejected(event));
+
+        verify(processedEventRepository, never()).save(any());
     }
 }

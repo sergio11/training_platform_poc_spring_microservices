@@ -388,4 +388,57 @@ class NotificationServiceTest {
         verify(notificationSender, never()).send(any(Notification.class));
         verify(notificationRepository, never()).save(any(Notification.class));
     }
+
+    @Test
+    void shouldHandleEmployeeUpdatedEvent() {
+        EmployeeUpdatedEvent event = EmployeeUpdatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("employee-service")
+                .employeeId(5L)
+                .employeeNumber("EMP-005")
+                .fullName("Jane Doe")
+                .email("jane@example.com")
+                .department("Engineering")
+                .position("Senior Developer")
+                .build();
+
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleEmployeeUpdated(event);
+
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
+                n.getType() == NotificationType.EMPLOYEE_UPDATED &&
+                n.getRecipientId().equals(5L)
+        ));
+    }
+
+    @Test
+    void shouldSkipEmployeeUpdatedWhenAlreadyProcessed() {
+        EmployeeUpdatedEvent event = EmployeeUpdatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("employee-service")
+                .employeeId(5L)
+                .employeeNumber("EMP-005")
+                .fullName("Jane Doe")
+                .email("jane@example.com")
+                .department("Engineering")
+                .position("Senior Developer")
+                .build();
+
+        when(processedEventRepository.existsByEventId(event.getEventId())).thenReturn(true);
+
+        notificationService.handleEmployeeUpdated(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
 }

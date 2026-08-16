@@ -6,6 +6,7 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.MessageConverter;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,7 +25,7 @@ class RabbitMQConfigTest {
 
     @Test
     void shouldCreateJsonMessageConverter() {
-        MessageConverter converter = config.jsonMessageConverter();
+        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
 
         assertNotNull(converter);
     }

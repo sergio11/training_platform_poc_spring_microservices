@@ -169,6 +169,25 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_EMPLOYEE_UPDATED)
+    public void handleEmployeeUpdated(EmployeeUpdatedEvent event) {
+        if (isAlreadyProcessed(event.getEventId())) return;
+
+        String message = String.format(
+                "Your employee profile has been updated. Name: %s, Department: %s, Position: %s.",
+                event.getFullName(), event.getDepartment(), event.getPosition());
+
+        saveNotification(
+                NotificationType.EMPLOYEE_UPDATED,
+                event.getEmployeeId(),
+                message,
+                String.valueOf(event.getEmployeeId()),
+                "EMPLOYEE",
+                event.getEventId()
+        );
+    }
+
     private boolean isAlreadyProcessed(String eventId) {
         if (processedEventRepository.existsByEventId(eventId)) {
             log.info("Event already processed, skipping: {}", eventId);

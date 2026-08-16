@@ -157,7 +157,6 @@ namespace :k8s do
     sh "kubectl apply -f infra/k8s/postgresql/"
     sh "kubectl apply -f infra/k8s/rabbitmq/"
     sh "kubectl apply -f infra/k8s/keycloak/"
-    sh "kubectl apply -f infra/k8s/config-server/"
     sh "kubectl apply -f infra/k8s/catalog-service/"
     sh "kubectl apply -f infra/k8s/employee-service/"
     sh "kubectl apply -f infra/k8s/enrollment-service/"
