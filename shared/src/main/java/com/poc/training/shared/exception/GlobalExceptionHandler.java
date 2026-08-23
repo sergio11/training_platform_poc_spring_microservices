@@ -94,6 +94,42 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(jakarta.validation.ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+            .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+            .reduce((a, b) -> a + "; " + b)
+            .orElse("Validation error");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+            "timestamp", LocalDateTime.now(),
+            "status", 400,
+            "error", "Validation Failed",
+            "message", message
+        ));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+            "timestamp", LocalDateTime.now(),
+            "status", 409,
+            "error", "Conflict",
+            "message", "A resource with the same data already exists"
+        ));
+    }
+
+    @ExceptionHandler(org.springframework.dao.CannotAcquireLockException.class)
+    public ResponseEntity<Map<String, Object>> handleCannotAcquireLock(org.springframework.dao.CannotAcquireLockException ex) {
+        log.warn("Lock acquisition failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+            "timestamp", LocalDateTime.now(),
+            "status", 409,
+            "error", "Conflict",
+            "message", "The resource is currently locked. Please try again later"
+        ));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);

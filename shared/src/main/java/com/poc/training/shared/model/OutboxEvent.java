@@ -41,9 +41,16 @@ public class OutboxEvent {
     @Column(nullable = false)
     private boolean processed;
 
+    @Version
+    private long version;
+
+    @Column(nullable = false)
+    private int retryCount;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         processed = false;
+        retryCount = 0;
     }
 }

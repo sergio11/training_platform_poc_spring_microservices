@@ -55,4 +55,21 @@ class NotificationTest {
         Notification notification = new Notification(1L, NotificationType.ENROLLMENT_CREATED, 1L, "Msg", "1", "ENROLLMENT", LocalDateTime.now(), NotificationStatus.SENT);
         assertEquals(NotificationType.ENROLLMENT_CREATED, notification.getType());
     }
+
+    @Test
+    void shouldNotOverrideStatusOnPrePersistWhenAlreadySet() {
+        Notification notification = Notification.builder()
+                .type(NotificationType.ENROLLMENT_CREATED)
+                .recipientId(1L)
+                .message("Test message")
+                .referenceId("1")
+                .referenceType("ENROLLMENT")
+                .status(NotificationStatus.SENT)
+                .build();
+
+        notification.onCreate();
+
+        assertEquals(NotificationStatus.SENT, notification.getStatus());
+        assertNotNull(notification.getSentAt());
+    }
 }

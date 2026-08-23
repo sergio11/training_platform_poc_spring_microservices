@@ -124,6 +124,12 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void shouldThrowWhenDeactivatingNonExistentEmployee() {
+        when(employeeRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> employeeService.deactivate(99L));
+    }
+
+    @Test
     void shouldThrowWhenDeactivatingEmployeeWithActiveEnrollments() {
         Employee e = Employee.builder().id(1L).employeeNumber("EMP001").fullName("Alice").email("alice@test.com").active(true).build();
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(e));

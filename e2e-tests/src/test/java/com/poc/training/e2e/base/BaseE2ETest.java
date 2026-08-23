@@ -105,19 +105,12 @@ public abstract class BaseE2ETest {
                 int rabbitmqPort = rabbitmq.getMappedPort(5672);
                 String rabbitmqHost = rabbitmq.getHost();
 
-                createDatabases();
+                log.info("Warming up Keycloak JWKS endpoint...");
+                WebClient.create().get()
+                        .uri("http://localhost:" + keycloakPort + "/realms/training-realm/protocol/openid-connect/certs")
+                        .retrieve().toBodilessEntity().block();
 
-                employeeUrl = startService(
-                        "com.poc.training.employee.EmployeeServiceApplication",
-                        "employee-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_employee"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false"));
+                createDatabases();
 
                 catalogUrl = startService(
                         "com.poc.training.catalog.TrainingCatalogServiceApplication",
@@ -132,6 +125,32 @@ public abstract class BaseE2ETest {
                                 "spring.flyway.enabled", "false"));
 
                 enrollmentUrl = startService(
+                        "com.poc.training.enrollment.EnrollmentServiceApplication",
+                        "enrollment-service", Map.of(
+                                "spring.datasource.url", jdbcUrl("training_enrollment"),
+                                "spring.datasource.username", "test",
+                                "spring.datasource.password", "test",
+                                "spring.rabbitmq.host", rabbitmqHost,
+                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
+                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
+                                "spring.jpa.hibernate.ddl-auto", "update",
+                                "spring.flyway.enabled", "false",
+                                "client.catalog.url", catalogUrl));
+
+                employeeUrl = startService(
+                        "com.poc.training.employee.EmployeeServiceApplication",
+                        "employee-service", Map.of(
+                                "spring.datasource.url", jdbcUrl("training_employee"),
+                                "spring.datasource.username", "test",
+                                "spring.datasource.password", "test",
+                                "spring.rabbitmq.host", rabbitmqHost,
+                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
+                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
+                                "spring.jpa.hibernate.ddl-auto", "update",
+                                "spring.flyway.enabled", "false",
+                                "client.enrollment.url", enrollmentUrl));
+
+                enrollmentUrl = restartService(
                         "com.poc.training.enrollment.EnrollmentServiceApplication",
                         "enrollment-service", Map.of(
                                 "spring.datasource.url", jdbcUrl("training_enrollment"),
@@ -190,7 +209,6 @@ public abstract class BaseE2ETest {
                 initialized = true;
             } catch (Exception e) {
                 log.error("E2E setup failed, cleaning up containers", e);
-                setupAttempted = false;
                 stopAll();
                 throw e;
             }
@@ -202,7 +220,7 @@ public abstract class BaseE2ETest {
         // Only tear down on the very last test class
     }
 
-    private static void stopAll() {
+    protected static void stopAll() {
         contexts.values().forEach(ctx -> {
             try { ctx.close(); } catch (Exception ignored) {}
         });
@@ -214,7 +232,7 @@ public abstract class BaseE2ETest {
 
     // ── Service lifecycle ──
 
-    private static String startService(String mainClassName, String name, Map<String, String> props) {
+    protected static String startService(String mainClassName, String name, Map<String, String> props) {
         try {
             log.info("Starting {}...", name);
             Class<?> mainClass = Class.forName(mainClassName);
@@ -255,6 +273,35 @@ public abstract class BaseE2ETest {
                         throw new AssertionError("Not ready: " + e.getMessage());
                     }
                 });
+    }
+
+    protected static void stopService(String name) {
+        ConfigurableApplicationContext ctx = contexts.get(name);
+        if (ctx != null) {
+            log.info("Stopping {}...", name);
+            ctx.close();
+            contexts.remove(name);
+        }
+    }
+
+    protected static String restartService(String mainClassName, String name, Map<String, String> props) {
+        stopService(name);
+        String url = startService(mainClassName, name, props);
+        contexts.put(name, contexts.get(name));
+        waitForHealth(url);
+        log.info("Restarted {} at {}", name, url);
+        return url;
+    }
+
+    protected static String getServiceUrl(String name) {
+        return switch (name) {
+            case "catalog-service" -> catalogUrl;
+            case "enrollment-service" -> enrollmentUrl;
+            case "certification-service" -> certificationUrl;
+            case "notification-service" -> notificationUrl;
+            case "employee-service" -> employeeUrl;
+            default -> throw new IllegalArgumentException("Unknown service: " + name);
+        };
     }
 
     private static void createDatabases() {

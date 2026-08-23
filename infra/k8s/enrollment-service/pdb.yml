@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: training-enrollment-service-pdb
+  namespace: training-platform
+  labels:
+    app: training-enrollment-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: training-enrollment-service

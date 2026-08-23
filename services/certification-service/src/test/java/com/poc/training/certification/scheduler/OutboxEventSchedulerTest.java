@@ -44,6 +44,7 @@ class OutboxEventSchedulerTest {
         event.setPayload("{\"test\":\"payload\"}");
         event.setRoutingKey("certificate.generated");
         event.setProcessed(false);
+        event.setRetryCount(0);
         return event;
     }
 
@@ -59,7 +60,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessCertificateGeneratedEvent() {
         OutboxEvent event = buildEvent("CertificateGeneratedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -73,31 +74,32 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
-    void shouldNotThrowForUnknownEventType() {
+    void shouldRetryForUnknownEventType() {
         OutboxEvent event = buildEvent("UnknownEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
-        assertFalse(event.isProcessed());
+        verify(outboxEventRepository).save(event);
+        assertEquals(1, event.getRetryCount());
     }
 
     @Test
-    void shouldNotRethrowWhenSendFails() {
+    void shouldRetryWhenSendFails() {
         OutboxEvent event = buildEvent("CertificateGeneratedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
         assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        verify(outboxEventRepository).save(event);
         assertFalse(event.isProcessed());
+        assertEquals(1, event.getRetryCount());
     }
 
     @Test
     void shouldHandleEmptyPendingEvents() {
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of());
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxEventScheduler.processPendingEvents();
 
@@ -108,7 +110,7 @@ class OutboxEventSchedulerTest {
     void shouldProcessMultiplePendingEvents() {
         OutboxEvent event1 = buildEvent("CertificateGeneratedEvent", 1L);
         OutboxEvent event2 = buildEvent("CertificateGeneratedEvent", 2L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -123,7 +125,7 @@ class OutboxEventSchedulerTest {
     void shouldContinueProcessingAfterSendFails() {
         OutboxEvent event1 = buildEvent("CertificateGeneratedEvent", 1L);
         OutboxEvent event2 = buildEvent("CertificateGeneratedEvent", 2L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ unavailable"))
                 .when(rabbitTemplate).send(anyString(), eq("certificate.generated"), any(Message.class));
@@ -131,5 +133,7 @@ class OutboxEventSchedulerTest {
         assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
         assertFalse(event1.isProcessed());
         assertFalse(event2.isProcessed());
+        assertEquals(1, event1.getRetryCount());
+        assertEquals(1, event2.getRetryCount());
     }
 }

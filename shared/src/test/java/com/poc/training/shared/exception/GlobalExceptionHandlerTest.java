@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -143,5 +144,69 @@ class GlobalExceptionHandlerTest {
         assertEquals("Service Unavailable", response.getBody().get("error"));
         assertEquals("Keycloak is down", response.getBody().get("message"));
         assertNotNull(response.getBody().get("timestamp"));
+    }
+
+    @Test
+    void shouldHandleConstraintViolation() {
+        jakarta.validation.ConstraintViolation<?> violation = mock(jakarta.validation.ConstraintViolation.class);
+        jakarta.validation.Path path = mock(jakarta.validation.Path.class);
+        when(violation.getPropertyPath()).thenReturn(path);
+        when(violation.getMessage()).thenReturn("must not be null");
+
+        jakarta.validation.ConstraintViolationException ex = mock(jakarta.validation.ConstraintViolationException.class);
+        when(ex.getConstraintViolations()).thenReturn(Set.of(violation));
+
+        var response = handler.handleConstraintViolation(ex);
+
+        assertEquals(400, response.getStatusCode().value());
+        Map<?, ?> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(400, body.get("status"));
+    }
+
+    @Test
+    void shouldHandleMultipleConstraintViolations() {
+        jakarta.validation.ConstraintViolation<?> v1 = mock(jakarta.validation.ConstraintViolation.class);
+        when(v1.getPropertyPath()).thenReturn(mock(jakarta.validation.Path.class));
+        when(v1.getMessage()).thenReturn("must not be blank");
+
+        jakarta.validation.ConstraintViolation<?> v2 = mock(jakarta.validation.ConstraintViolation.class);
+        when(v2.getPropertyPath()).thenReturn(mock(jakarta.validation.Path.class));
+        when(v2.getMessage()).thenReturn("size must be between 2 and 50");
+
+        jakarta.validation.ConstraintViolationException ex = mock(jakarta.validation.ConstraintViolationException.class);
+        when(ex.getConstraintViolations()).thenReturn(Set.of(v1, v2));
+
+        var response = handler.handleConstraintViolation(ex);
+
+        assertEquals(400, response.getStatusCode().value());
+        Map<?, ?> body = response.getBody();
+        assertNotNull(body);
+        String message = (String) body.get("message");
+        assertTrue(message.contains(";"));
+    }
+
+    @Test
+    void shouldHandleDataIntegrityViolation() {
+        var ex = new org.springframework.dao.DataIntegrityViolationException("Duplicate key");
+
+        var response = handler.handleDataIntegrityViolation(ex);
+
+        assertEquals(409, response.getStatusCode().value());
+        Map<?, ?> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(409, body.get("status"));
+    }
+
+    @Test
+    void shouldHandleCannotAcquireLock() {
+        var ex = new org.springframework.dao.CannotAcquireLockException("Lock timeout");
+
+        var response = handler.handleCannotAcquireLock(ex);
+
+        assertEquals(409, response.getStatusCode().value());
+        Map<?, ?> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(409, body.get("status"));
     }
 }

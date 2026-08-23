@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: training-employee-service-pdb
+  namespace: training-platform
+  labels:
+    app: training-employee-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: training-employee-service

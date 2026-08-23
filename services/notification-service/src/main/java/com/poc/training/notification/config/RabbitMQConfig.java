@@ -19,6 +19,8 @@ public class RabbitMQConfig {
     public static final String QUEUE_ENROLLMENT_CANCELLED = "notification.enrollment.cancelled";
     public static final String QUEUE_COURSE_COMPLETED = "notification.course.completed";
     public static final String QUEUE_EMPLOYEE_UPDATED = "notification.employee.updated";
+    public static final String QUEUE_EMPLOYEE_CREATED = "notification.employee.created";
+    public static final String QUEUE_EMPLOYEE_DEACTIVATED = "notification.employee.deactivated";
 
     @Bean
     public TopicExchange trainingExchange() {
@@ -95,6 +97,22 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue employeeCreatedQueue() {
+        return QueueBuilder.durable(QUEUE_EMPLOYEE_CREATED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
+    public Queue employeeDeactivatedQueue() {
+        return QueueBuilder.durable(QUEUE_EMPLOYEE_DEACTIVATED)
+                .deadLetterExchange("")
+                .deadLetterRoutingKey("notification.dlq")
+                .build();
+    }
+
+    @Bean
     public Binding enrollmentCreatedBinding(Queue enrollmentCreatedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(enrollmentCreatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED);
     }
@@ -127,6 +145,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding employeeUpdatedBinding(Queue employeeUpdatedQueue, TopicExchange trainingExchange) {
         return BindingBuilder.bind(employeeUpdatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_EMPLOYEE_UPDATED);
+    }
+
+    @Bean
+    public Binding employeeCreatedBinding(Queue employeeCreatedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(employeeCreatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_EMPLOYEE_CREATED);
+    }
+
+    @Bean
+    public Binding employeeDeactivatedBinding(Queue employeeDeactivatedQueue, TopicExchange trainingExchange) {
+        return BindingBuilder.bind(employeeDeactivatedQueue).to(trainingExchange).with(RabbitMQConstants.ROUTING_KEY_EMPLOYEE_DEACTIVATED);
     }
 
     @Bean

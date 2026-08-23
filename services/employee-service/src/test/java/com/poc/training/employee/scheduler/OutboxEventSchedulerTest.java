@@ -44,6 +44,7 @@ class OutboxEventSchedulerTest {
         event.setPayload("{\"test\":\"payload\"}");
         event.setRoutingKey("employee.created");
         event.setProcessed(false);
+        event.setRetryCount(0);
         return event;
     }
 
@@ -59,7 +60,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessPendingEvents() {
         OutboxEvent event = buildEvent("EmployeeCreatedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -73,7 +74,7 @@ class OutboxEventSchedulerTest {
     void shouldProcessMultipleEvents() {
         OutboxEvent event1 = buildEvent("EmployeeCreatedEvent", 1L);
         OutboxEvent event2 = buildEvent("EmployeeDeactivatedEvent", 2L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -84,7 +85,7 @@ class OutboxEventSchedulerTest {
 
     @Test
     void shouldSkipWhenNoPendingEvents() {
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of());
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxEventScheduler.processPendingEvents();
 
@@ -92,20 +93,22 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
-    void shouldNotThrowWhenSendFails() {
+    void shouldRetryWhenSendFails() {
         OutboxEvent event = buildEvent("EmployeeCreatedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
         assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
         assertFalse(event.isProcessed());
+        assertEquals(1, event.getRetryCount());
+        verify(outboxEventRepository).save(event);
     }
 
     @Test
     void shouldVerifyTypeIdHeader() {
         OutboxEvent event = buildEvent("EmployeeCreatedEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();

@@ -19,7 +19,13 @@ spec:
         - name: training-keycloak
           image: quay.io/keycloak/keycloak:24.0.1
           args:
-            - start-dev
+            - start
+            - --import-realm
+          env:
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
           ports:
             - containerPort: 8080
           envFrom:
@@ -34,6 +40,14 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /health/ready

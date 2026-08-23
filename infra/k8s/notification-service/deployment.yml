@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: training-notification-service
-          image: training-notification-service:latest
+          image: training-notification-service:1.0.0
           ports:
             - containerPort: 8084
           envFrom:
@@ -32,6 +32,14 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /actuator/health

@@ -63,7 +63,7 @@ class OutboxEventTest {
     @Test
     void shouldHaveAllArgsConstructor() {
         LocalDateTime now = LocalDateTime.now();
-        OutboxEvent event = new OutboxEvent(1L, "Employee", "100", "Created", "payload", "routing", now, false);
+        OutboxEvent event = new OutboxEvent(1L, "Employee", "100", "Created", "payload", "routing", now, false, 0L, 0);
 
         assertEquals(1L, event.getId());
         assertEquals("Employee", event.getAggregateType());

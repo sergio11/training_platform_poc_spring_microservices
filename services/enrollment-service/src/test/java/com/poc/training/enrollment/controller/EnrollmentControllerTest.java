@@ -373,4 +373,13 @@ class EnrollmentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("true"));
     }
+
+    @Test
+    void shouldReturn400ForInvalidSortField() throws Exception {
+        mockMvc.perform(get("/api/v1/enrollments")
+                        .param("employeeId", "1")
+                        .param("sortBy", "invalidField"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"));
+    }
 }

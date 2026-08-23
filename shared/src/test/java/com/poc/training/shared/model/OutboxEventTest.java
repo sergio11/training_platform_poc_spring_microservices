@@ -50,6 +50,20 @@ class OutboxEventTest {
     }
 
     @Test
+    void shouldGetAndSetVersion() {
+        OutboxEvent event = OutboxEvent.builder().build();
+        event.setVersion(5L);
+        assertEquals(5L, event.getVersion());
+    }
+
+    @Test
+    void shouldGetAndSetRetryCount() {
+        OutboxEvent event = OutboxEvent.builder().build();
+        event.setRetryCount(3);
+        assertEquals(3, event.getRetryCount());
+    }
+
+    @Test
     void shouldCallOnPrePersist() throws Exception {
         OutboxEvent event = OutboxEvent.builder().build();
         var method = OutboxEvent.class.getDeclaredMethod("onCreate");

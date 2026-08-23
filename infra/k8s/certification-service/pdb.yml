@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: training-certification-service-pdb
+  namespace: training-platform
+  labels:
+    app: training-certification-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: training-certification-service

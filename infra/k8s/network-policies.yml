@@ -1,0 +1,186 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: training-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: training-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-services-to-postgresql
+  namespace: training-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: training-catalog-service
+        - podSelector:
+            matchLabels:
+              app: training-enrollment-service
+        - podSelector:
+            matchLabels:
+              app: training-certification-service
+        - podSelector:
+            matchLabels:
+              app: training-notification-service
+        - podSelector:
+            matchLabels:
+              app: training-employee-service
+        - podSelector:
+            matchLabels:
+              app: training-keycloak
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-services-to-rabbitmq
+  namespace: training-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: training-rabbitmq
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: training-catalog-service
+        - podSelector:
+            matchLabels:
+              app: training-enrollment-service
+        - podSelector:
+            matchLabels:
+              app: training-certification-service
+        - podSelector:
+            matchLabels:
+              app: training-notification-service
+        - podSelector:
+            matchLabels:
+              app: training-employee-service
+      ports:
+        - protocol: TCP
+          port: 5672
+        - protocol: TCP
+          port: 15672
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-services-to-keycloak
+  namespace: training-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: training-keycloak
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: training-catalog-service
+        - podSelector:
+            matchLabels:
+              app: training-enrollment-service
+        - podSelector:
+            matchLabels:
+              app: training-certification-service
+        - podSelector:
+            matchLabels:
+              app: training-notification-service
+        - podSelector:
+            matchLabels:
+              app: training-employee-service
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kong-to-services
+  namespace: training-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: training-kong
+      ports:
+        - protocol: TCP
+          port: 8081
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8083
+        - protocol: TCP
+          port: 8084
+        - protocol: TCP
+          port: 8085
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-services-egress
+  namespace: training-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: training-rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - podSelector:
+            matchLabels:
+              app: training-keycloak
+      ports:
+        - protocol: TCP
+          port: 8080

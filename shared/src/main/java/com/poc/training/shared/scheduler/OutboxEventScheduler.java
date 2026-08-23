@@ -11,6 +11,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,8 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class OutboxEventScheduler {
+
+    static final int MAX_RETRIES = 5;
 
     private static final Map<String, String> EVENT_TYPE_MAP = Map.ofEntries(
             Map.entry("EnrollmentCreatedEvent", "com.poc.training.shared.event.EnrollmentCreatedEvent"),
@@ -39,8 +42,9 @@ public class OutboxEventScheduler {
     private final TransactionTemplate transactionTemplate;
 
     @Scheduled(fixedDelayString = "${outbox.polling-interval:5000}")
+    @Transactional
     public void processPendingEvents() {
-        var pendingEvents = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(
+        var pendingEvents = outboxEventRepository.findPendingEventsWithLock(
                 PageRequest.of(0, 100));
         for (OutboxEvent event : pendingEvents) {
             try {
@@ -61,7 +65,26 @@ public class OutboxEventScheduler {
             } catch (Exception e) {
                 log.error("Failed to send outbox event {} (type={}, aggregateId={}): {}",
                         event.getId(), event.getEventType(), event.getAggregateId(), e.getMessage(), e);
+                handleRetry(event);
             }
+        }
+    }
+
+    private void handleRetry(OutboxEvent event) {
+        try {
+            int newRetryCount = event.getRetryCount() + 1;
+            if (newRetryCount >= MAX_RETRIES) {
+                event.setProcessed(true);
+                log.error("Outbox event {} exceeded max retries ({}), marking as failed: type={}, aggregateId={}",
+                        event.getId(), MAX_RETRIES, event.getEventType(), event.getAggregateId());
+            } else {
+                event.setRetryCount(newRetryCount);
+                log.warn("Outbox event {} will retry ({}/{}): type={}, aggregateId={}",
+                        event.getId(), newRetryCount, MAX_RETRIES, event.getEventType(), event.getAggregateId());
+            }
+            outboxEventRepository.save(event);
+        } catch (Exception ex) {
+            log.error("Failed to update retry count for outbox event {}: {}", event.getId(), ex.getMessage(), ex);
         }
     }
 

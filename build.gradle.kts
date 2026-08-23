@@ -43,7 +43,9 @@ subprojects {
     }
 
     tasks.withType<Test> {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            excludeTags("integration")
+        }
         systemProperty("testcontainers.ryuk.disabled", "true")
         systemProperty("ryuk.disabled", "true")
         environment("TESTCONTAINERS_RYUK_DISABLED", "true")

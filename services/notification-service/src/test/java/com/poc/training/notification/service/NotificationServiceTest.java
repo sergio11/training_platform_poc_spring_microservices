@@ -441,4 +441,136 @@ class NotificationServiceTest {
         verify(notificationSender, never()).send(any(Notification.class));
         verify(notificationRepository, never()).save(any(Notification.class));
     }
+
+    @Test
+    void shouldHandleEmployeeCreatedEvent() {
+        EmployeeCreatedEvent event = EmployeeCreatedEvent.builder()
+                .eventId("evt-ec-1")
+                .employeeId(1L)
+                .fullName("John Doe")
+                .department("IT")
+                .build();
+
+        when(processedEventRepository.existsByEventId("evt-ec-1")).thenReturn(false);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+
+        notificationService.handleEmployeeCreated(event);
+
+        verify(notificationRepository, times(2)).save(any(Notification.class));
+        verify(notificationSender).send(any(Notification.class));
+    }
+
+    @Test
+    void shouldHandleEmployeeDeactivatedEvent() {
+        EmployeeDeactivatedEvent event = EmployeeDeactivatedEvent.builder()
+                .eventId("evt-ed-1")
+                .employeeId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId("evt-ed-1")).thenReturn(false);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(2L);
+            return n;
+        });
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+
+        notificationService.handleEmployeeDeactivated(event);
+
+        verify(notificationRepository, times(2)).save(any(Notification.class));
+        verify(notificationSender).send(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipEmployeeCreatedWhenAlreadyProcessed() {
+        EmployeeCreatedEvent event = EmployeeCreatedEvent.builder()
+                .eventId("evt-ec-skip")
+                .employeeId(1L)
+                .fullName("John Doe")
+                .department("IT")
+                .build();
+
+        when(processedEventRepository.existsByEventId("evt-ec-skip")).thenReturn(true);
+
+        notificationService.handleEmployeeCreated(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSkipEmployeeDeactivatedWhenAlreadyProcessed() {
+        EmployeeDeactivatedEvent event = EmployeeDeactivatedEvent.builder()
+                .eventId("evt-ed-skip")
+                .employeeId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId("evt-ed-skip")).thenReturn(true);
+
+        notificationService.handleEmployeeDeactivated(event);
+
+        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldHandleEnrollmentRejectedEvent() {
+        EnrollmentRejectedEvent event = EnrollmentRejectedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleEnrollmentRejected(event);
+
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
+                n.getType() == NotificationType.ENROLLMENT_REJECTED &&
+                n.getRecipientId().equals(1L)
+        ));
+    }
+
+    @Test
+    void shouldHandleEnrollmentCancelledEvent() {
+        EnrollmentCancelledEvent event = EnrollmentCancelledEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .timestamp(LocalDateTime.now())
+                .source("enrollment-service")
+                .enrollmentId(1L)
+                .employeeId(1L)
+                .courseId(1L)
+                .build();
+
+        when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+
+        notificationService.handleEnrollmentCancelled(event);
+
+        verify(notificationSender).send(any(Notification.class));
+        verify(notificationRepository, times(2)).save(argThat(n ->
+                n.getType() == NotificationType.ENROLLMENT_CANCELLED &&
+                n.getRecipientId().equals(1L)
+        ));
+    }
 }

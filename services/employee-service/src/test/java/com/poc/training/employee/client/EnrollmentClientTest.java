@@ -144,20 +144,36 @@ class EnrollmentClientTest {
     @Test
     void shouldReturnFalseWhenRequestContextHolderHasNoAttributes() {
         RequestContextHolder.setRequestAttributes(null);
-        EnrollmentClient client = new EnrollmentClient("http://localhost:8082");
+        RestTemplate restTemplate = org.mockito.Mockito.mock(RestTemplate.class);
+        when(restTemplate.getForObject(
+                eq("http://localhost:8082/api/v1/enrollments/active/{employeeId}"),
+                eq(Boolean.class),
+                eq(1L)))
+                .thenReturn(false);
+        EnrollmentClient client = new EnrollmentClient("http://localhost:8082", restTemplate);
         boolean result = client.hasActiveEnrollments(1L);
         assertFalse(result);
     }
 
     @Test
-    void shouldReturnFalseWhenExtractAuthHeaderThrows() {
+    void shouldReturnFalseWhenExtractAuthHeaderThrows() throws Exception {
         try (MockedStatic<RequestContextHolder> mocked = mockStatic(RequestContextHolder.class)) {
             mocked.when(RequestContextHolder::getRequestAttributes)
                     .thenThrow(new RuntimeException("RequestContext unavailable"));
 
             EnrollmentClient client = new EnrollmentClient("http://localhost:8082");
-            boolean result = client.hasActiveEnrollments(1L);
-            assertFalse(result);
+            ClientHttpRequestInterceptor interceptor = getInterceptor(client);
+
+            HttpHeaders outgoingHeaders = new HttpHeaders();
+            HttpRequest httpRequest = mock(HttpRequest.class);
+            when(httpRequest.getHeaders()).thenReturn(outgoingHeaders);
+            ClientHttpRequestExecution execution = mock(ClientHttpRequestExecution.class);
+            ClientHttpResponse httpResponse = mock(ClientHttpResponse.class);
+            when(execution.execute(httpRequest, new byte[0])).thenReturn(httpResponse);
+
+            interceptor.intercept(httpRequest, new byte[0], execution);
+
+            assertNull(outgoingHeaders.get(HttpHeaders.AUTHORIZATION));
         }
     }
 

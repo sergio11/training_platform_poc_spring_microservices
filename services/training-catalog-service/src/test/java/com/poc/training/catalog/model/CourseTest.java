@@ -71,4 +71,22 @@ class CourseTest {
         Course course = new Course(1L, "Title", "Desc", "Instructor", 30, 0, CourseStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
         assertEquals("Title", course.getTitle());
     }
+
+    @Test
+    void shouldNotOverrideDefaultsOnPrePersistWhenAlreadySet() {
+        Course course = Course.builder()
+                .title("Java Basics")
+                .instructor("John")
+                .capacity(30)
+                .enrolledCount(5)
+                .status(CourseStatus.INACTIVE)
+                .build();
+
+        course.onCreate();
+
+        assertEquals(CourseStatus.INACTIVE, course.getStatus());
+        assertEquals(5, course.getEnrolledCount());
+        assertNotNull(course.getCreatedAt());
+        assertNotNull(course.getUpdatedAt());
+    }
 }

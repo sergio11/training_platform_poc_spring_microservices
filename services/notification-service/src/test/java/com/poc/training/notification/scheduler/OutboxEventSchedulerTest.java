@@ -45,6 +45,7 @@ class OutboxEventSchedulerTest {
         event.setPayload("{\"test\":\"payload\"}");
         event.setRoutingKey("notification.sent");
         event.setProcessed(false);
+        event.setRetryCount(0);
         return event;
     }
 
@@ -60,7 +61,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessPendingEventsSuccessfully() {
         OutboxEvent event = buildEvent("NotificationSentEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(any(Pageable.class))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(any(Pageable.class))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -74,21 +75,22 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
-    void shouldHandleSendFailure() {
+    void shouldRetryOnSendFailure() {
         OutboxEvent event = buildEvent("NotificationSentEvent", 1L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(any(Pageable.class))).thenReturn(List.of(event));
+        when(outboxEventRepository.findPendingEventsWithLock(any(Pageable.class))).thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("Connection refused"))
                 .when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
         assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        verify(outboxEventRepository).save(event);
         assertFalse(event.isProcessed());
+        assertEquals(1, event.getRetryCount());
     }
 
     @Test
     void shouldHandleEmptyPendingList() {
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(any(Pageable.class))).thenReturn(List.of());
+        when(outboxEventRepository.findPendingEventsWithLock(any(Pageable.class))).thenReturn(List.of());
 
         outboxEventScheduler.processPendingEvents();
 
@@ -100,7 +102,7 @@ class OutboxEventSchedulerTest {
     void shouldProcessMultipleEvents() {
         OutboxEvent e1 = buildEvent("NotificationSentEvent", 1L);
         OutboxEvent e2 = buildEvent("NotificationSentEvent", 2L);
-        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(any(Pageable.class))).thenReturn(List.of(e1, e2));
+        when(outboxEventRepository.findPendingEventsWithLock(any(Pageable.class))).thenReturn(List.of(e1, e2));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();

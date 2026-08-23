@@ -188,6 +188,42 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_EMPLOYEE_CREATED)
+    public void handleEmployeeCreated(EmployeeCreatedEvent event) {
+        if (isAlreadyProcessed(event.getEventId())) return;
+
+        String message = String.format(
+                "Welcome %s! Your employee profile has been created. Department: %s.",
+                event.getFullName(), event.getDepartment());
+
+        saveNotification(
+                NotificationType.EMPLOYEE_CREATED,
+                event.getEmployeeId(),
+                message,
+                String.valueOf(event.getEmployeeId()),
+                "EMPLOYEE",
+                event.getEventId()
+        );
+    }
+
+    @Transactional
+    @RabbitListener(queues = com.poc.training.notification.config.RabbitMQConfig.QUEUE_EMPLOYEE_DEACTIVATED)
+    public void handleEmployeeDeactivated(EmployeeDeactivatedEvent event) {
+        if (isAlreadyProcessed(event.getEventId())) return;
+
+        String message = "Your employee profile has been deactivated.";
+
+        saveNotification(
+                NotificationType.EMPLOYEE_DEACTIVATED,
+                event.getEmployeeId(),
+                message,
+                String.valueOf(event.getEmployeeId()),
+                "EMPLOYEE",
+                event.getEventId()
+        );
+    }
+
     private boolean isAlreadyProcessed(String eventId) {
         if (processedEventRepository.existsByEventId(eventId)) {
             log.info("Event already processed, skipping: {}", eventId);

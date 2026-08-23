@@ -11,8 +11,9 @@ public class DlqListener {
 
     @RabbitListener(queues = "notification.dlq")
     public void handleDlqMessage(Message message) {
-        log.warn("[DLQ] Received failed message in notification.dlq: routingKey={}, body={}",
+        log.error("[DLQ] Received failed message in notification.dlq: routingKey={}, body={}, timestamp={}",
                 message.getMessageProperties().getReceivedRoutingKey(),
-                new String(message.getBody()));
+                new String(message.getBody()),
+                java.time.LocalDateTime.now());
     }
 }

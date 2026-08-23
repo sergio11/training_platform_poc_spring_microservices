@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: training-notification-service-pdb
+  namespace: training-platform
+  labels:
+    app: training-notification-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: training-notification-service
