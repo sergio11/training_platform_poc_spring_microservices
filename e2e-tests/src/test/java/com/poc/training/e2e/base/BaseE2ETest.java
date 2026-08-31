@@ -241,6 +241,7 @@ public abstract class BaseE2ETest {
             allProps.put("server.port", "0");
             allProps.put("spring.main.banner-mode", "off");
             allProps.put("spring.main.allow-bean-definition-overriding", "true");
+            allProps.put("spring.lifecycle.timeout-per-shutdown-phase", "10s");
             allProps.putAll(props);
 
             ConfigurableEnvironment env = new StandardEnvironment();
@@ -281,6 +282,7 @@ public abstract class BaseE2ETest {
             log.info("Stopping {}...", name);
             ctx.close();
             contexts.remove(name);
+            try { Thread.sleep(1000); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
         }
     }
 

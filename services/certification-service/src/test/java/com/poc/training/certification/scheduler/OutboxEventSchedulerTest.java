@@ -60,7 +60,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldProcessCertificateGeneratedEvent() {
         OutboxEvent event = buildEvent("CertificateGeneratedEvent", 1L);
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -76,7 +76,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldRetryForUnknownEventType() {
         OutboxEvent event = buildEvent("UnknownEvent", 1L);
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
 
         assertDoesNotThrow(() -> outboxEventScheduler.processPendingEvents());
@@ -87,7 +87,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldRetryWhenSendFails() {
         OutboxEvent event = buildEvent("CertificateGeneratedEvent", 1L);
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("Connection refused")).when(rabbitTemplate).send(anyString(), anyString(), any(Message.class));
 
@@ -99,7 +99,7 @@ class OutboxEventSchedulerTest {
 
     @Test
     void shouldHandleEmptyPendingEvents() {
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of());
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of());
 
         outboxEventScheduler.processPendingEvents();
 
@@ -110,7 +110,7 @@ class OutboxEventSchedulerTest {
     void shouldProcessMultiplePendingEvents() {
         OutboxEvent event1 = buildEvent("CertificateGeneratedEvent", 1L);
         OutboxEvent event2 = buildEvent("CertificateGeneratedEvent", 2L);
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
@@ -125,7 +125,7 @@ class OutboxEventSchedulerTest {
     void shouldContinueProcessingAfterSendFails() {
         OutboxEvent event1 = buildEvent("CertificateGeneratedEvent", 1L);
         OutboxEvent event2 = buildEvent("CertificateGeneratedEvent", 2L);
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100))).thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ unavailable"))
                 .when(rabbitTemplate).send(anyString(), eq("certificate.generated"), any(Message.class));

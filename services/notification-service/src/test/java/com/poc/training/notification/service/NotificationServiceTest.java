@@ -329,7 +329,7 @@ class NotificationServiceTest {
     }
 
     @Test
-    void shouldSkipNotificationOnDataIntegrityViolation() {
+    void shouldCreateNotificationEvenWhenProcessedEventSaveFails() {
         EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -340,13 +340,20 @@ class NotificationServiceTest {
                 .build();
 
         when(processedEventRepository.existsByEventId(anyString())).thenReturn(false);
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> {
+            Notification n = inv.getArgument(0);
+            n.setId(1L);
+            return n;
+        });
+        when(notificationSender.send(any(Notification.class))).thenReturn(true);
         doThrow(new DataIntegrityViolationException("Duplicate key"))
                 .when(processedEventRepository).save(any(ProcessedEvent.class));
 
         notificationService.handleEnrollmentCreated(event);
 
-        verify(notificationRepository, never()).save(any(Notification.class));
-        verify(notificationSender, never()).send(any(Notification.class));
+        verify(notificationRepository, atLeastOnce()).save(argThat(n ->
+                n instanceof Notification && ((Notification) n).getType() == NotificationType.ENROLLMENT_CREATED));
+        verify(notificationSender).send(any(Notification.class));
     }
 
     @Test

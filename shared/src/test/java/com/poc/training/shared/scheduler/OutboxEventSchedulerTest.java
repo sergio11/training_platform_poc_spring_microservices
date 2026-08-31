@@ -2,6 +2,7 @@ package com.poc.training.shared.scheduler;
 
 import com.poc.training.shared.model.OutboxEvent;
 import com.poc.training.shared.repository.OutboxEventRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,6 +37,11 @@ class OutboxEventSchedulerTest {
     @InjectMocks
     private OutboxEventScheduler outboxEventScheduler;
 
+    @BeforeEach
+    void setUp() {
+        outboxEventScheduler.init();
+    }
+
     @SuppressWarnings("unchecked")
     private void stubTransactionTemplate() {
         doAnswer(invocation -> {
@@ -59,7 +65,7 @@ class OutboxEventSchedulerTest {
                 .retryCount(0)
                 .build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
 
@@ -71,7 +77,7 @@ class OutboxEventSchedulerTest {
 
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(Collections.emptyList());
 
         outboxEventScheduler.processPendingEvents();
@@ -91,7 +97,7 @@ class OutboxEventSchedulerTest {
                 .eventType("EnrollmentApprovedEvent").payload("{\"id\":2}")
                 .routingKey("enrollment.approved").createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
 
@@ -110,14 +116,13 @@ class OutboxEventSchedulerTest {
                 .eventType("EnrollmentCreatedEvent").payload("{\"id\":1}")
                 .routingKey("enrollment.created").createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ down")).when(rabbitTemplate).send(anyString(), anyString(), any());
 
         outboxEventScheduler.processPendingEvents();
 
-        verify(outboxEventRepository).save(event);
         verify(outboxEventRepository).save(event);
         assertFalse(event.isProcessed());
         assertEquals(1, event.getRetryCount());
@@ -131,7 +136,7 @@ class OutboxEventSchedulerTest {
                 .routingKey("enrollment.created").createdAt(LocalDateTime.now()).processed(false)
                 .retryCount(OutboxEventScheduler.MAX_RETRIES).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ down")).when(rabbitTemplate).send(anyString(), anyString(), any());
@@ -165,7 +170,7 @@ class OutboxEventSchedulerTest {
                         .createdAt(LocalDateTime.now()).processed(false).retryCount(0).build())
                 .toList();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(events);
         stubTransactionTemplate();
 
@@ -181,7 +186,7 @@ class OutboxEventSchedulerTest {
                 .eventType("EnrollmentCreatedEvent").payload("{}").routingKey("enrollment.created")
                 .createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ down")).when(rabbitTemplate).send(anyString(), anyString(), any());
@@ -194,13 +199,23 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
+    void shouldNotProcessEventsWhenStopped() {
+        outboxEventScheduler.stop();
+
+        outboxEventScheduler.processPendingEvents();
+
+        verify(outboxEventRepository, never()).findByProcessedFalseOrderByCreatedAtAsc(any());
+        verify(rabbitTemplate, never()).send(anyString(), anyString(), any());
+    }
+
+    @Test
     void shouldThrowForUnknownEventType() {
         OutboxEvent event = OutboxEvent.builder()
                 .id(1L).aggregateType("Test").aggregateId("agg-1")
                 .eventType("UnknownEvent").payload("{}").routingKey("test.key")
                 .createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
 

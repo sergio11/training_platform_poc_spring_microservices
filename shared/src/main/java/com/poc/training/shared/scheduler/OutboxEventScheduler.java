@@ -3,6 +3,8 @@ package com.poc.training.shared.scheduler;
 import com.poc.training.shared.event.RabbitMQConstants;
 import com.poc.training.shared.model.OutboxEvent;
 import com.poc.training.shared.repository.OutboxEventRepository;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -11,7 +13,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -23,6 +25,8 @@ import java.util.Map;
 public class OutboxEventScheduler {
 
     static final int MAX_RETRIES = 5;
+
+    private volatile boolean running = true;
 
     private static final Map<String, String> EVENT_TYPE_MAP = Map.ofEntries(
             Map.entry("EnrollmentCreatedEvent", "com.poc.training.shared.event.EnrollmentCreatedEvent"),
@@ -41,10 +45,22 @@ public class OutboxEventScheduler {
     private final RabbitTemplate rabbitTemplate;
     private final TransactionTemplate transactionTemplate;
 
+    @PostConstruct
+    void init() {
+        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @PreDestroy
+    void stop() {
+        running = false;
+    }
+
     @Scheduled(fixedDelayString = "${outbox.polling-interval:5000}")
-    @Transactional
     public void processPendingEvents() {
-        var pendingEvents = outboxEventRepository.findPendingEventsWithLock(
+        if (!running) {
+            return;
+        }
+        var pendingEvents = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(
                 PageRequest.of(0, 100));
         for (OutboxEvent event : pendingEvents) {
             try {
@@ -72,17 +88,19 @@ public class OutboxEventScheduler {
 
     private void handleRetry(OutboxEvent event) {
         try {
-            int newRetryCount = event.getRetryCount() + 1;
-            if (newRetryCount >= MAX_RETRIES) {
-                event.setProcessed(true);
-                log.error("Outbox event {} exceeded max retries ({}), marking as failed: type={}, aggregateId={}",
-                        event.getId(), MAX_RETRIES, event.getEventType(), event.getAggregateId());
-            } else {
-                event.setRetryCount(newRetryCount);
-                log.warn("Outbox event {} will retry ({}/{}): type={}, aggregateId={}",
-                        event.getId(), newRetryCount, MAX_RETRIES, event.getEventType(), event.getAggregateId());
-            }
-            outboxEventRepository.save(event);
+            transactionTemplate.executeWithoutResult(status -> {
+                int newRetryCount = event.getRetryCount() + 1;
+                if (newRetryCount >= MAX_RETRIES) {
+                    event.setProcessed(true);
+                    log.error("Outbox event {} exceeded max retries ({}), marking as failed: type={}, aggregateId={}",
+                            event.getId(), MAX_RETRIES, event.getEventType(), event.getAggregateId());
+                } else {
+                    event.setRetryCount(newRetryCount);
+                    log.warn("Outbox event {} will retry ({}/{}): type={}, aggregateId={}",
+                            event.getId(), newRetryCount, MAX_RETRIES, event.getEventType(), event.getAggregateId());
+                }
+                outboxEventRepository.save(event);
+            });
         } catch (Exception ex) {
             log.error("Failed to update retry count for outbox event {}: {}", event.getId(), ex.getMessage(), ex);
         }

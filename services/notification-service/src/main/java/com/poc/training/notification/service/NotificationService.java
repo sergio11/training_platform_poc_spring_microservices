@@ -234,20 +234,10 @@ public class NotificationService {
 
     private void saveNotification(NotificationType type, Long recipientId, String message,
                                   String referenceId, String referenceType, String eventId) {
-        try {
-            ProcessedEvent processed = ProcessedEvent.builder()
-                    .eventId(eventId)
-                    .eventType(type.name())
-                    .build();
-            processedEventRepository.save(processed);
-        } catch (DataIntegrityViolationException e) {
-            log.info("Event already processed (concurrent), skipping: {}", eventId);
-            return;
-        }
-
         if (notificationRepository.existsByReferenceIdAndReferenceTypeAndType(referenceId, referenceType, type)) {
             log.info("Notification already exists for reference {}/{} type {}, skipping",
                     referenceId, referenceType, type);
+            saveProcessedEvent(eventId, type);
             return;
         }
 
@@ -263,6 +253,8 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         log.info("Saved notification of type {} for recipient: {}", type, recipientId);
 
+        saveProcessedEvent(eventId, type);
+
         try {
             boolean sent = notificationSender.send(saved);
             if (!sent) {
@@ -274,6 +266,18 @@ public class NotificationService {
         } catch (Exception e) {
             log.error("Failed to process notification {}: {}", saved.getId(), e.getMessage());
             throw e;
+        }
+    }
+
+    private void saveProcessedEvent(String eventId, NotificationType type) {
+        try {
+            ProcessedEvent processed = ProcessedEvent.builder()
+                    .eventId(eventId)
+                    .eventType(type.name())
+                    .build();
+            processedEventRepository.save(processed);
+        } catch (DataIntegrityViolationException e) {
+            log.info("Event already processed (concurrent), skipping: {}", eventId);
         }
     }
 }
