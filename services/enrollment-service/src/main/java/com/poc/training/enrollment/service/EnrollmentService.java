@@ -71,14 +71,8 @@ public class EnrollmentService {
     }
 
     @Transactional
-    public EnrollmentResponse enroll(Long employeeId, Long courseId) {
+    public Enrollment enrollInternal(Long employeeId, Long courseId) {
         log.info("Processing enrollment for employee {} in course {}", employeeId, courseId);
-
-        if (!employeeClient.existsById(employeeId)) {
-            throw new BusinessException("Employee not found with id: " + employeeId);
-        }
-
-        trainingCatalogClient.getCourse(courseId);
 
         List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED, EnrollmentStatus.COMPLETED);
         List<Enrollment> existing = enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(
@@ -96,14 +90,6 @@ public class EnrollmentService {
 
         Enrollment saved = enrollmentRepository.save(enrollment);
 
-        try {
-            trainingCatalogClient.incrementEnrolledCount(courseId);
-        } catch (Exception e) {
-            log.warn("Failed to increment seat for course {}: {}", courseId, e.getMessage());
-            enrollmentRepository.delete(saved);
-            throw new BusinessException("No available seats for course: " + courseId);
-        }
-
         EnrollmentCreatedEvent event = EnrollmentCreatedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -116,6 +102,26 @@ public class EnrollmentService {
         persistOutboxEvent("Enrollment", String.valueOf(saved.getId()), "EnrollmentCreatedEvent",
                 event, RabbitMQConstants.ROUTING_KEY_ENROLLMENT_CREATED);
         log.info("Persisted EnrollmentCreatedEvent to outbox for enrollment: {}", saved.getId());
+
+        return saved;
+    }
+
+    public EnrollmentResponse enroll(Long employeeId, Long courseId) {
+        if (!employeeClient.existsById(employeeId)) {
+            throw new BusinessException("Employee not found with id: " + employeeId);
+        }
+
+        trainingCatalogClient.getCourse(courseId);
+
+        Enrollment saved = enrollInternal(employeeId, courseId);
+
+        try {
+            trainingCatalogClient.incrementEnrolledCount(saved.getCourseId());
+        } catch (Exception e) {
+            log.warn("Failed to increment seat for course {}: {}", saved.getCourseId(), e.getMessage());
+            enrollmentRepository.delete(saved);
+            throw new BusinessException("No available seats for course: " + saved.getCourseId());
+        }
 
         return toResponse(saved);
     }

@@ -41,6 +41,8 @@ public class TrainingCatalogClient {
         throw new ServiceUnavailableException("Catalog Service unavailable for course: " + courseId, throwable);
     }
 
+    @CircuitBreaker(name = "catalogService", fallbackMethod = "incrementEnrolledCountFallback")
+    @Retry(name = "catalogService")
     public void incrementEnrolledCount(Long courseId) {
         log.info("Incrementing enrolled count for course: {}", courseId);
         webClient.patch()
@@ -50,6 +52,13 @@ public class TrainingCatalogClient {
                 .block(Duration.ofSeconds(5));
     }
 
+    public void incrementEnrolledCountFallback(Long courseId, Throwable throwable) {
+        log.error("Fallback called for incrementEnrolledCount with course: {}. Error: {}", courseId, throwable.getMessage());
+        throw new ServiceUnavailableException("Catalog Service unavailable for seat increment: " + courseId, throwable);
+    }
+
+    @CircuitBreaker(name = "catalogService", fallbackMethod = "decrementEnrolledCountFallback")
+    @Retry(name = "catalogService")
     public void decrementEnrolledCount(Long courseId) {
         log.info("Decrementing enrolled count for course: {}", courseId);
         webClient.patch()
@@ -57,5 +66,10 @@ public class TrainingCatalogClient {
                 .retrieve()
                 .toBodilessEntity()
                 .block(Duration.ofSeconds(5));
+    }
+
+    public void decrementEnrolledCountFallback(Long courseId, Throwable throwable) {
+        log.error("Fallback called for decrementEnrolledCount with course: {}. Error: {}", courseId, throwable.getMessage());
+        throw new ServiceUnavailableException("Catalog Service unavailable for seat decrement: " + courseId, throwable);
     }
 }

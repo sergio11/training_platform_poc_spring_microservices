@@ -1,79 +1,45 @@
 package com.poc.training.employee.client;
 
+import com.poc.training.shared.exception.ServiceUnavailableException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
+import java.time.Duration;
 
 @Slf4j
 @Component
 public class EnrollmentClient {
 
-    private final RestTemplate restTemplate;
-    private final String baseUrl;
+    private final WebClient webClient;
 
-    @Autowired
-    public EnrollmentClient(@Value("${client.enrollment.url:http://localhost:8082}") String enrollmentBaseUrl) {
-        this.baseUrl = enrollmentBaseUrl;
-        this.restTemplate = createRestTemplateWithTokenRelay();
+    public EnrollmentClient(WebClient.Builder webClientBuilder,
+            @Value("${client.enrollment.url:http://localhost:8082}") String enrollmentBaseUrl) {
+        this.webClient = webClientBuilder
+                .baseUrl(enrollmentBaseUrl)
+                .build();
     }
 
-    EnrollmentClient(String baseUrl, RestTemplate restTemplate) {
-        this.baseUrl = baseUrl;
-        this.restTemplate = restTemplate;
-    }
-
-    private static RestTemplate createRestTemplateWithTokenRelay() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(3000);
-        factory.setReadTimeout(5000);
-
-        RestTemplate restTemplate = new RestTemplate(factory);
-        restTemplate.setInterceptors(List.of(tokenRelayInterceptor()));
-        return restTemplate;
-    }
-
-    private static ClientHttpRequestInterceptor tokenRelayInterceptor() {
-        return (request, body, execution) -> {
-            String authHeader = extractAuthHeader();
-            if (authHeader != null) {
-                request.getHeaders().set(HttpHeaders.AUTHORIZATION, authHeader);
-            }
-            return execution.execute(request, body);
-        };
-    }
-
-    private static String extractAuthHeader() {
-        try {
-            RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
-            if (attrs instanceof ServletRequestAttributes servletAttrs) {
-                HttpServletRequest servletRequest = servletAttrs.getRequest();
-                return servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-            }
-        } catch (Exception e) {
-            log.debug("Could not extract auth header: {}", e.getMessage());
-        }
-        return null;
-    }
-
+    @CircuitBreaker(name = "enrollmentService", fallbackMethod = "hasActiveEnrollmentsFallback")
+    @Retry(name = "enrollmentService")
     public boolean hasActiveEnrollments(Long employeeId) {
         try {
-            Boolean result = restTemplate.getForObject(
-                    baseUrl + "/api/v1/enrollments/active/{employeeId}", Boolean.class, employeeId);
-            return Boolean.TRUE.equals(result);
+            return Boolean.TRUE.equals(webClient.get()
+                    .uri("/api/v1/enrollments/active/{employeeId}", employeeId)
+                    .retrieve()
+                    .bodyToMono(Boolean.class)
+                    .block(Duration.ofSeconds(5)));
         } catch (Exception e) {
             log.warn("Could not check active enrollments for employee {}: {}", employeeId, e.getMessage());
             return false;
         }
+    }
+
+    public boolean hasActiveEnrollmentsFallback(Long employeeId, Throwable throwable) {
+        log.error("Fallback called for hasActiveEnrollments. Employee: {}. Error: {}", employeeId, throwable.getMessage());
+        throw new ServiceUnavailableException("Enrollment Service unavailable for employee: " + employeeId, throwable);
     }
 }

@@ -157,7 +157,7 @@ class JwtUtilsTest {
         Jwt jwt = createJwt(Map.of("employeeId", List.of()));
 
         String result = JwtUtils.extractEmployeeIdAsString(jwt);
-        assertNotNull(result);
+        assertNull(result);
     }
 
     @Test

@@ -89,7 +89,7 @@ public abstract class BaseE2ETest {
                 rabbitmq.start();
 
                 keycloak = new org.testcontainers.containers.GenericContainer<>(
-                        DockerImageName.parse("quay.io/keycloak/keycloak:24.0.1"))
+                        DockerImageName.parse("quay.io/keycloak/keycloak:26.0"))
                         .withExposedPorts(8080)
                         .withCommand("start-dev", "--import-realm")
                         .withCopyFileToContainer(
@@ -217,7 +217,13 @@ public abstract class BaseE2ETest {
 
     @AfterAll
     void tearDownAll() {
-        // Only tear down on the very last test class
+        synchronized (BaseE2ETest.class) {
+            if (!initialized) return;
+            log.info("=== Tearing down E2E infrastructure ===");
+            stopAll();
+            initialized = false;
+            setupAttempted = false;
+        }
     }
 
     protected static void stopAll() {

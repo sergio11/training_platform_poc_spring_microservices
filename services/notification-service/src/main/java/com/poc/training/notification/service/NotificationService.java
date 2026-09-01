@@ -253,8 +253,6 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         log.info("Saved notification of type {} for recipient: {}", type, recipientId);
 
-        saveProcessedEvent(eventId, type);
-
         try {
             boolean sent = notificationSender.send(saved);
             if (!sent) {
@@ -263,6 +261,7 @@ public class NotificationService {
             saved.setStatus(NotificationStatus.DELIVERED);
             notificationRepository.save(saved);
             log.info("Delivered notification {} of type {} for recipient: {}", saved.getId(), type, recipientId);
+            saveProcessedEvent(eventId, type);
         } catch (Exception e) {
             log.error("Failed to process notification {}: {}", saved.getId(), e.getMessage());
             throw e;

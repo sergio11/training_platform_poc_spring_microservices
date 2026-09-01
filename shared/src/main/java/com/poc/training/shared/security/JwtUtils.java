@@ -48,6 +48,10 @@ public final class JwtUtils {
         if (employeeIds != null && !employeeIds.isEmpty()) {
             return employeeIds.get(0);
         }
-        return jwt.getClaimAsString("employeeId");
+        String scalar = jwt.getClaimAsString("employeeId");
+        if (scalar != null && !scalar.isBlank() && !scalar.equals("[]")) {
+            return scalar;
+        }
+        return null;
     }
 }

@@ -311,7 +311,6 @@ class EnrollmentServiceTest {
             e.setId(1L);
             return e;
         });
-        doNothing().when(trainingCatalogClient).incrementEnrolledCount(1L);
         when(objectMapper.writeValueAsString(any())).thenThrow(new tools.jackson.core.JacksonException("serialize error", null, null) {});
 
         assertThrows(RuntimeException.class, () -> enrollmentService.enroll(1L, 1L));

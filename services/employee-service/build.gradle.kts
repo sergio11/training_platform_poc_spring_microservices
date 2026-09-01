@@ -9,9 +9,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("io.micrometer:micrometer-tracing-bridge-otel")
@@ -39,4 +41,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2025.1.2")
+    }
 }
