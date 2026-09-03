@@ -1,48 +1,100 @@
 package com.poc.training.employee.client;
 
 import com.poc.training.shared.exception.ServiceUnavailableException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class EnrollmentClientTest {
 
-    private EnrollmentClient createClient(String baseUrl) {
-        WebClient.Builder builder = WebClient.builder();
-        return new EnrollmentClient(builder, baseUrl);
+    @Mock
+    private WebClient.Builder webClientBuilder;
+
+    @Mock
+    private WebClient.Builder chainedBuilder;
+
+    @Mock
+    private WebClient webClient;
+
+    @Mock
+    private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
+
+    @Mock
+    private WebClient.ResponseSpec responseSpec;
+
+    private EnrollmentClient enrollmentClient;
+
+    @BeforeEach
+    void setUp() {
+        when(webClientBuilder.baseUrl(anyString())).thenReturn(chainedBuilder);
+        when(chainedBuilder.build()).thenReturn(webClient);
+        enrollmentClient = new EnrollmentClient(webClientBuilder, "http://localhost:8082");
     }
 
     @Test
     void shouldCreateClientWithValidUrl() {
-        EnrollmentClient client = createClient("http://localhost:8082");
-        assertNotNull(client);
+        assertNotNull(enrollmentClient);
+    }
+
+    @Test
+    void shouldReturnTrueWhenHasActiveEnrollments() {
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString(), eq(1L))).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Boolean.class)).thenReturn(Mono.just(true));
+
+        assertTrue(enrollmentClient.hasActiveEnrollments(1L));
+    }
+
+    @Test
+    void shouldReturnFalseWhenNoActiveEnrollments() {
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString(), eq(99L))).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Boolean.class)).thenReturn(Mono.just(false));
+
+        assertFalse(enrollmentClient.hasActiveEnrollments(99L));
+    }
+
+    @Test
+    void shouldReturnFalseWhenResponseIsNull() {
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString(), eq(1L))).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Boolean.class)).thenReturn(Mono.empty());
+
+        assertFalse(enrollmentClient.hasActiveEnrollments(1L));
     }
 
     @Test
     void shouldReturnFalseWhenExceptionOccurs() {
-        EnrollmentClient client = createClient("http://localhost:9999");
-        boolean result = client.hasActiveEnrollments(1L);
-        assertFalse(result);
+        when(webClient.get()).thenThrow(new RuntimeException("Connection refused"));
+
+        assertFalse(enrollmentClient.hasActiveEnrollments(1L));
     }
 
     @Test
-    void shouldReturnFalseWhenServiceIsUnavailable() {
-        EnrollmentClient client = createClient("http://localhost:9999");
-        boolean result = client.hasActiveEnrollments(42L);
-        assertFalse(result);
+    void shouldThrowInHasActiveEnrollmentsFallback() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                enrollmentClient.hasActiveEnrollmentsFallback(1L, new RuntimeException("Connection refused")));
     }
 
     @Test
-    void shouldHandleMultipleCallsGracefully() {
-        EnrollmentClient client = createClient("http://localhost:9999");
-        assertFalse(client.hasActiveEnrollments(1L));
-        assertFalse(client.hasActiveEnrollments(2L));
-        assertFalse(client.hasActiveEnrollments(3L));
+    void shouldThrowInHasActiveEnrollmentsFallbackWithNullId() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                enrollmentClient.hasActiveEnrollmentsFallback(null, new RuntimeException("Error")));
     }
 }

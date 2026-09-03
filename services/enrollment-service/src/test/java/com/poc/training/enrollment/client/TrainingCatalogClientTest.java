@@ -104,4 +104,28 @@ class TrainingCatalogClientTest {
 
         verify(webClient).patch();
     }
+
+    @Test
+    void shouldThrowInIncrementEnrolledCountFallback() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                trainingCatalogClient.incrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
+    }
+
+    @Test
+    void shouldThrowInIncrementEnrolledCountFallbackWithNullId() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                trainingCatalogClient.incrementEnrolledCountFallback(null, new RuntimeException("Error")));
+    }
+
+    @Test
+    void shouldThrowInDecrementEnrolledCountFallback() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                trainingCatalogClient.decrementEnrolledCountFallback(1L, new RuntimeException("Connection refused")));
+    }
+
+    @Test
+    void shouldThrowInDecrementEnrolledCountFallbackWithNullId() {
+        assertThrows(ServiceUnavailableException.class, () ->
+                trainingCatalogClient.decrementEnrolledCountFallback(null, new RuntimeException("Error")));
+    }
 }

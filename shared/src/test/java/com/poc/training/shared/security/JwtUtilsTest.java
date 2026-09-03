@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JwtUtilsTest {
 
@@ -165,6 +167,35 @@ class JwtUtilsTest {
         Jwt jwt = createJwt(Map.of());
 
         assertNull(JwtUtils.extractEmployeeIdAsLong(jwt));
+        assertNull(JwtUtils.extractEmployeeIdAsString(jwt));
+    }
+
+    @Test
+    void shouldExtractValidScalarWhenListFallback() {
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getClaimAsStringList("employeeId")).thenReturn(null);
+        when(jwt.getClaimAsString("employeeId")).thenReturn("42");
+
+        assertEquals("42", JwtUtils.extractEmployeeIdAsString(jwt));
+        assertEquals(42L, JwtUtils.extractEmployeeIdAsLong(jwt));
+    }
+
+    @Test
+    void shouldReturnNullForBlankScalar() {
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getClaimAsStringList("employeeId")).thenReturn(null);
+        when(jwt.getClaimAsString("employeeId")).thenReturn("   ");
+
+        assertNull(JwtUtils.extractEmployeeIdAsString(jwt));
+        assertNull(JwtUtils.extractEmployeeIdAsLong(jwt));
+    }
+
+    @Test
+    void shouldReturnNullForBracketScalar() {
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getClaimAsStringList("employeeId")).thenReturn(null);
+        when(jwt.getClaimAsString("employeeId")).thenReturn("[]");
+
         assertNull(JwtUtils.extractEmployeeIdAsString(jwt));
     }
 
