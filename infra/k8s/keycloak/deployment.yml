@@ -50,7 +50,7 @@ spec:
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
-              path: /health/ready
+              path: /health/live
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 10

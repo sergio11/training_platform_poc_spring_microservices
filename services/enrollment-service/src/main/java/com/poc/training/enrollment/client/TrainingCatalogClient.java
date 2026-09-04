@@ -42,7 +42,6 @@ public class TrainingCatalogClient {
     }
 
     @CircuitBreaker(name = "catalogService", fallbackMethod = "incrementEnrolledCountFallback")
-    @Retry(name = "catalogService")
     public void incrementEnrolledCount(Long courseId) {
         log.info("Incrementing enrolled count for course: {}", courseId);
         webClient.patch()
@@ -58,7 +57,6 @@ public class TrainingCatalogClient {
     }
 
     @CircuitBreaker(name = "catalogService", fallbackMethod = "decrementEnrolledCountFallback")
-    @Retry(name = "catalogService")
     public void decrementEnrolledCount(Long courseId) {
         log.info("Decrementing enrolled count for course: {}", courseId);
         webClient.patch()

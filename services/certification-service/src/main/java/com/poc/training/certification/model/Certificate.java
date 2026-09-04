@@ -20,7 +20,7 @@ public class Certificate {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 20)
     private String certificateNumber;
 
     @Column(nullable = false, unique = true)

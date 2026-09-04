@@ -120,6 +120,21 @@ class EnrollmentServiceTest {
         when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of(Enrollment.builder().id(1L).build()));
 
         assertThrows(BusinessException.class, () -> enrollmentService.enroll(1L, 1L));
+        verify(trainingCatalogClient).incrementEnrolledCount(1L);
+        verify(trainingCatalogClient).decrementEnrolledCount(1L);
+    }
+
+    @Test
+    void shouldSwallowCompensationFailureWhenEnrollFails() {
+        when(employeeClient.existsById(1L)).thenReturn(true);
+        CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(0).status("ACTIVE").build();
+        when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
+        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of(Enrollment.builder().id(1L).build()));
+        doThrow(new RuntimeException("compensation down")).when(trainingCatalogClient).decrementEnrolledCount(1L);
+
+        assertThrows(BusinessException.class, () -> enrollmentService.enroll(1L, 1L));
+        verify(trainingCatalogClient).incrementEnrolledCount(1L);
+        verify(trainingCatalogClient).decrementEnrolledCount(1L);
     }
 
     @Test
@@ -127,17 +142,13 @@ class EnrollmentServiceTest {
         when(employeeClient.existsById(1L)).thenReturn(true);
         CourseDTO course = CourseDTO.builder().id(1L).capacity(30).enrolledCount(30).status("ACTIVE").build();
         when(trainingCatalogClient.getCourse(1L)).thenReturn(course);
-        when(enrollmentRepository.findByEmployeeIdAndCourseIdAndStatusInWithLock(eq(1L), eq(1L), anyList())).thenReturn(List.of());
-        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> {
-            Enrollment e = inv.getArgument(0);
-            e.setId(1L);
-            return e;
-        });
         doThrow(new BusinessException("No available seats for course: 1"))
                 .when(trainingCatalogClient).incrementEnrolledCount(1L);
 
         assertThrows(BusinessException.class, () -> enrollmentService.enroll(1L, 1L));
-        verify(enrollmentRepository).delete(any(Enrollment.class));
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+        verify(enrollmentRepository, never()).delete(any(Enrollment.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
 
     @Test

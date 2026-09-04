@@ -60,7 +60,7 @@ public class OutboxEventScheduler {
         if (!running) {
             return;
         }
-        var pendingEvents = outboxEventRepository.findByProcessedFalseOrderByCreatedAtAsc(
+        var pendingEvents = outboxEventRepository.findPendingEventsWithLock(
                 PageRequest.of(0, 100));
         for (OutboxEvent event : pendingEvents) {
             try {
@@ -91,8 +91,7 @@ public class OutboxEventScheduler {
             transactionTemplate.executeWithoutResult(status -> {
                 int newRetryCount = event.getRetryCount() + 1;
                 if (newRetryCount >= MAX_RETRIES) {
-                    event.setProcessed(true);
-                    log.error("Outbox event {} exceeded max retries ({}), marking as failed: type={}, aggregateId={}",
+                    log.error("Outbox event {} exceeded max retries ({}), keeping as pending for manual intervention: type={}, aggregateId={}",
                             event.getId(), MAX_RETRIES, event.getEventType(), event.getAggregateId());
                 } else {
                     event.setRetryCount(newRetryCount);

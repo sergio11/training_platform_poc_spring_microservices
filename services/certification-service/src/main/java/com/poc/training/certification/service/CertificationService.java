@@ -101,6 +101,7 @@ public class CertificationService {
                 log.info("Persisted CertificateGeneratedEvent to outbox for certificate: {}", saved.getId());
             } catch (JacksonException e) {
                 log.error("Failed to serialize CertificateGeneratedEvent: {}", e.getMessage());
+                throw new RuntimeException("Failed to persist outbox event", e);
             }
         } catch (DataIntegrityViolationException e) {
             log.info("Certificate already exists for enrollment: {} (detected by DB constraint)", event.getEnrollmentId());

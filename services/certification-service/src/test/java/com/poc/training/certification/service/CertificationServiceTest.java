@@ -140,7 +140,7 @@ class CertificationServiceTest {
     }
 
     @Test
-    void shouldNotThrowWhenSerializationFails() throws Exception {
+    void shouldThrowWhenSerializationFails() throws Exception {
         CourseCompletedEvent event = CourseCompletedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
@@ -158,7 +158,7 @@ class CertificationServiceTest {
         });
         when(objectMapper.writeValueAsString(any())).thenThrow(new tools.jackson.core.JacksonException("serialize error", null, null) {});
 
-        assertDoesNotThrow(() -> certificationService.handleCourseCompleted(event));
+        assertThrows(RuntimeException.class, () -> certificationService.handleCourseCompleted(event));
         verify(certificateRepository).save(any(Certificate.class));
         verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }

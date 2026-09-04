@@ -121,8 +121,8 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.host", rabbitmqHost,
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false"));
+                                "spring.jpa.hibernate.ddl-auto", "validate",
+                                "spring.flyway.enabled", "true"));
 
                 enrollmentUrl = startService(
                         "com.poc.training.enrollment.EnrollmentServiceApplication",
@@ -133,8 +133,8 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.host", rabbitmqHost,
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false",
+                                "spring.jpa.hibernate.ddl-auto", "validate",
+                                "spring.flyway.enabled", "true",
                                 "client.catalog.url", catalogUrl));
 
                 employeeUrl = startService(
@@ -146,8 +146,8 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.host", rabbitmqHost,
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false",
+                                "spring.jpa.hibernate.ddl-auto", "validate",
+                                "spring.flyway.enabled", "true",
                                 "client.enrollment.url", enrollmentUrl));
 
                 enrollmentUrl = restartService(
@@ -159,8 +159,8 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.host", rabbitmqHost,
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false",
+                                "spring.jpa.hibernate.ddl-auto", "validate",
+                                "spring.flyway.enabled", "true",
                                 "client.catalog.url", catalogUrl,
                                 "client.employee.url", employeeUrl));
 
@@ -173,8 +173,8 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.host", rabbitmqHost,
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false"));
+                                "spring.jpa.hibernate.ddl-auto", "validate",
+                                "spring.flyway.enabled", "true"));
 
                 notificationUrl = startService(
                         "com.poc.training.notification.NotificationServiceApplication",
@@ -185,8 +185,8 @@ public abstract class BaseE2ETest {
                                 "spring.rabbitmq.host", rabbitmqHost,
                                 "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
                                 "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "update",
-                                "spring.flyway.enabled", "false"));
+                                "spring.jpa.hibernate.ddl-auto", "validate",
+                                "spring.flyway.enabled", "true"));
 
                 catalogClient = WebClient.builder().baseUrl(catalogUrl)
                         .defaultHeader("Content-Type", "application/json").build();

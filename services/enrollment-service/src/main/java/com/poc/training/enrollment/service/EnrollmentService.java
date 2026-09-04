@@ -113,17 +113,23 @@ public class EnrollmentService {
 
         trainingCatalogClient.getCourse(courseId);
 
-        Enrollment saved = enrollInternal(employeeId, courseId);
-
         try {
-            trainingCatalogClient.incrementEnrolledCount(saved.getCourseId());
+            trainingCatalogClient.incrementEnrolledCount(courseId);
         } catch (Exception e) {
-            log.warn("Failed to increment seat for course {}: {}", saved.getCourseId(), e.getMessage());
-            enrollmentRepository.delete(saved);
-            throw new BusinessException("No available seats for course: " + saved.getCourseId());
+            log.warn("Failed to increment seat for course {}: {}", courseId, e.getMessage());
+            throw new BusinessException("No available seats for course: " + courseId);
         }
 
-        return toResponse(saved);
+        try {
+            return toResponse(enrollInternal(employeeId, courseId));
+        } catch (Exception e) {
+            try {
+                trainingCatalogClient.decrementEnrolledCount(courseId);
+            } catch (Exception ex) {
+                log.warn("Failed to compensate seat for course {}: {}", courseId, ex.getMessage());
+            }
+            throw e;
+        }
     }
 
     @Transactional
