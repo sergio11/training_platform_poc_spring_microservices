@@ -49,7 +49,7 @@ subprojects {
         systemProperty("testcontainers.ryuk.disabled", "true")
         systemProperty("ryuk.disabled", "true")
         environment("TESTCONTAINERS_RYUK_DISABLED", "true")
-        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/podman-machine-default")
+        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/docker_engine")
     }
 
     tasks.withType<JacocoReport> {
@@ -102,7 +102,7 @@ subprojects {
         systemProperty("testcontainers.ryuk.disabled", "true")
         systemProperty("ryuk.disabled", "true")
         environment("TESTCONTAINERS_RYUK_DISABLED", "true")
-        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/podman-machine-default")
+        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/docker_engine")
     }
 
     // Unit test task (excluding integration tests)
@@ -129,7 +129,7 @@ tasks.register("e2eTest", Test::class) {
     systemProperty("testcontainers.ryuk.disabled", "true")
     systemProperty("ryuk.disabled", "true")
     environment("TESTCONTAINERS_RYUK_DISABLED", "true")
-    environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/podman-machine-default")
+    environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/docker_engine")
 }
 
 tasks.register("testAll", Test::class) {

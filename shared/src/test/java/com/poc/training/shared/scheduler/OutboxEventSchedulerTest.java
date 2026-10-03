@@ -79,6 +79,7 @@ class OutboxEventSchedulerTest {
     void shouldDoNothingWhenNoPendingEvents() {
         when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
                 .thenReturn(Collections.emptyList());
+        stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
 

@@ -1,7 +1,7 @@
 # Rakefile for Corporate Training Platform POC
 
 CONTAINER_ENGINE = ENV['CONTAINER_ENGINE'] || 'podman'
-PODMAN_DOCKER_HOST = "npipe:////./pipe/podman-machine-default"
+PODMAN_DOCKER_HOST = "npipe:////./pipe/docker_engine"
 
 def setup_podman_env
   ENV['DOCKER_HOST'] ||= PODMAN_DOCKER_HOST

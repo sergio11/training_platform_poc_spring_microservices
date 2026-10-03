@@ -17,6 +17,8 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -60,8 +62,10 @@ public class OutboxEventScheduler {
         if (!running) {
             return;
         }
-        var pendingEvents = outboxEventRepository.findPendingEventsWithLock(
-                PageRequest.of(0, 100));
+        List<OutboxEvent> pendingEvents = new ArrayList<>();
+        transactionTemplate.executeWithoutResult(status ->
+                pendingEvents.addAll(outboxEventRepository.findPendingEventsWithLock(
+                        PageRequest.of(0, 100))));
         for (OutboxEvent event : pendingEvents) {
             try {
                 transactionTemplate.executeWithoutResult(status -> {

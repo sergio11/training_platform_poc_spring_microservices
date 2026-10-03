@@ -28,10 +28,11 @@ class OutboxPatternE2ETest extends BaseE2ETest {
                 .atMost(15, java.util.concurrent.TimeUnit.SECONDS)
                 .pollInterval(1, java.util.concurrent.TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                                     .queryParam("recipientId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");
@@ -58,10 +59,11 @@ class OutboxPatternE2ETest extends BaseE2ETest {
                 .atMost(20, java.util.concurrent.TimeUnit.SECONDS)
                 .pollInterval(1, java.util.concurrent.TimeUnit.SECONDS)
                 .untilAsserted(() -> {
+                    String currentToken = adminToken();
                     Map<?, ?> page = notificationClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
                                     .queryParam("recipientId", emp).build())
-                            .header("Authorization", "Bearer " + token)
+                            .header("Authorization", "Bearer " + currentToken)
                             .retrieve().bodyToMono(Map.class).block();
 
                     var content = (java.util.List<?>) page.get("content");

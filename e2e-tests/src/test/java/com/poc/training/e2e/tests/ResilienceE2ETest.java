@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ResilienceE2ETest extends BaseE2ETest {
 
     @Test
+    @Order(2)
     @DisplayName("Enrollment service responds normally when catalog is healthy")
     void normalFlowWhenCatalogHealthy() {
         String token = adminToken();
@@ -28,6 +29,7 @@ class ResilienceE2ETest extends BaseE2ETest {
     }
 
     @Test
+    @Order(3)
     @DisplayName("Enrollment service handles downstream failure gracefully")
     void enrollmentHandlesDownstreamFailure() {
         String token = adminToken();
@@ -44,6 +46,7 @@ class ResilienceE2ETest extends BaseE2ETest {
     }
 
     @Test
+    @Order(4)
     @DisplayName("Circuit breaker opens when catalog service is unavailable")
     void circuitBreakerOpensWhenCatalogDown() throws Exception {
         String token = adminToken();
@@ -74,41 +77,51 @@ class ResilienceE2ETest extends BaseE2ETest {
         catalogUrl = restartService(
                 "com.poc.training.catalog.TrainingCatalogServiceApplication",
                 "catalog-service",
-                Map.of(
-                        "spring.datasource.url", postgres.getJdbcUrl().replace("training_platform", "training_catalog"),
-                        "spring.datasource.username", "test",
-                        "spring.datasource.password", "test",
-                        "spring.rabbitmq.host", rabbitmq.getHost(),
-                        "spring.rabbitmq.port", String.valueOf(rabbitmq.getMappedPort(5672)),
-                        "spring.security.oauth2.resourceserver.jwt.issuer-uri", "http://localhost:" + keycloak.getMappedPort(8080) + "/realms/training-realm",
-                        "spring.jpa.hibernate.ddl-auto", "update",
-                        "spring.flyway.enabled", "false"));
+                Map.ofEntries(
+                        Map.entry("spring.datasource.url", postgres.getJdbcUrl().replace("training_platform", "training_catalog")),
+                        Map.entry("spring.datasource.username", "test"),
+                        Map.entry("spring.datasource.password", "test"),
+                        Map.entry("spring.flyway.url", postgres.getJdbcUrl().replace("training_platform", "training_catalog")),
+                        Map.entry("spring.flyway.user", "test"),
+                        Map.entry("spring.flyway.password", "test"),
+                        Map.entry("spring.rabbitmq.host", rabbitmq.getHost()),
+                        Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmq.getMappedPort(5672))),
+                        Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", "http://localhost:" + keycloak.getMappedPort(8080) + "/realms/training-realm"),
+                        Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                        Map.entry("spring.flyway.enabled", "true"),
+                        Map.entry("spring.flyway.locations", "classpath:db/migration/catalog")));
         catalogClient = WebClient.builder().baseUrl(catalogUrl)
                 .defaultHeader("Content-Type", "application/json").build();
 
         enrollmentUrl = restartService(
                 "com.poc.training.enrollment.EnrollmentServiceApplication",
                 "enrollment-service",
-                Map.of(
-                        "spring.datasource.url", postgres.getJdbcUrl().replace("training_platform", "training_enrollment"),
-                        "spring.datasource.username", "test",
-                        "spring.datasource.password", "test",
-                        "spring.rabbitmq.host", rabbitmq.getHost(),
-                        "spring.rabbitmq.port", String.valueOf(rabbitmq.getMappedPort(5672)),
-                        "spring.security.oauth2.resourceserver.jwt.issuer-uri", "http://localhost:" + keycloak.getMappedPort(8080) + "/realms/training-realm",
-                        "spring.jpa.hibernate.ddl-auto", "update",
-                        "spring.flyway.enabled", "false",
-                        "client.catalog.url", catalogUrl,
-                        "client.employee.url", employeeUrl));
+                Map.ofEntries(
+                        Map.entry("spring.datasource.url", postgres.getJdbcUrl().replace("training_platform", "training_enrollment")),
+                        Map.entry("spring.datasource.username", "test"),
+                        Map.entry("spring.datasource.password", "test"),
+                        Map.entry("spring.flyway.url", postgres.getJdbcUrl().replace("training_platform", "training_enrollment")),
+                        Map.entry("spring.flyway.user", "test"),
+                        Map.entry("spring.flyway.password", "test"),
+                        Map.entry("spring.rabbitmq.host", rabbitmq.getHost()),
+                        Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmq.getMappedPort(5672))),
+                        Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", "http://localhost:" + keycloak.getMappedPort(8080) + "/realms/training-realm"),
+                        Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                        Map.entry("spring.flyway.enabled", "true"),
+                        Map.entry("spring.flyway.locations", "classpath:db/migration/enrollment"),
+                        Map.entry("client.catalog.url", catalogUrl),
+                        Map.entry("client.employee.url", employeeUrl)));
         enrollmentClient = WebClient.builder().baseUrl(enrollmentUrl)
                 .defaultHeader("Content-Type", "application/json").build();
     }
 
     @Test
+    @Order(1)
     @DisplayName("Actuator health endpoint is accessible for all services")
     void actuatorHealthEndpointsAccessible() {
         for (String url : new String[]{catalogUrl, enrollmentUrl, certificationUrl,
                 notificationUrl, employeeUrl}) {
+            assertThat(url).as("service URL must be initialized").isNotNull();
             String health = WebClient.create().get()
                     .uri(url + "/actuator/health")
                     .retrieve().bodyToMono(String.class).block();

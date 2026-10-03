@@ -91,6 +91,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldHandleEmptyPendingList() {
         when(outboxEventRepository.findPendingEventsWithLock(any(Pageable.class))).thenReturn(List.of());
+        stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
 

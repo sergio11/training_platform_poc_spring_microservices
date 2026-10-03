@@ -86,6 +86,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldSkipWhenNoPendingEvents() {
         when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of());
+        stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
 

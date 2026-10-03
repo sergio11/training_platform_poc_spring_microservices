@@ -106,6 +106,7 @@ public class EnrollmentService {
         return saved;
     }
 
+    @Transactional
     public EnrollmentResponse enroll(Long employeeId, Long courseId) {
         if (!employeeClient.existsById(employeeId)) {
             throw new BusinessException("Employee not found with id: " + employeeId);

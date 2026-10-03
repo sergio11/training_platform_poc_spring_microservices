@@ -180,6 +180,7 @@ class OutboxEventSchedulerTest {
     @Test
     void shouldHandleEmptyPendingEvents() {
         when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100))).thenReturn(List.of());
+        stubTransactionTemplate();
 
         outboxEventScheduler.processPendingEvents();
 

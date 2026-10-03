@@ -35,13 +35,12 @@ public abstract class BaseE2ETest {
     private static final Logger log = LoggerFactory.getLogger(BaseE2ETest.class);
 
     private static boolean initialized = false;
-    private static volatile boolean setupAttempted = false;
 
     static {
         System.setProperty("testcontainers.ryuk.disabled", "true");
         System.setProperty("ryuk.disabled", "true");
         if (System.getenv("DOCKER_HOST") == null) {
-            System.setProperty("docker.host", "npipe:////./pipe/podman-machine-default");
+            System.setProperty("docker.host", "npipe:////./pipe/docker_engine");
         }
     }
 
@@ -66,8 +65,7 @@ public abstract class BaseE2ETest {
     @BeforeAll
     void setUpAll() {
         synchronized (BaseE2ETest.class) {
-            if (initialized || setupAttempted) return;
-            setupAttempted = true;
+            if (initialized) return;
 
             try {
                 log.info("=== Starting E2E infrastructure (single shared instance) ===");
@@ -105,88 +103,110 @@ public abstract class BaseE2ETest {
                 int rabbitmqPort = rabbitmq.getMappedPort(5672);
                 String rabbitmqHost = rabbitmq.getHost();
 
-                log.info("Warming up Keycloak JWKS endpoint...");
-                WebClient.create().get()
-                        .uri("http://localhost:" + keycloakPort + "/realms/training-realm/protocol/openid-connect/certs")
-                        .retrieve().toBodilessEntity().block();
+                waitForKeycloakReady(keycloakPort);
 
                 createDatabases();
 
                 catalogUrl = startService(
                         "com.poc.training.catalog.TrainingCatalogServiceApplication",
-                        "catalog-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_catalog"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "validate",
-                                "spring.flyway.enabled", "true"));
+                        "catalog-service", Map.ofEntries(
+                                Map.entry("spring.datasource.url", jdbcUrl("training_catalog")),
+                                Map.entry("spring.datasource.username", "test"),
+                                Map.entry("spring.datasource.password", "test"),
+                                Map.entry("spring.flyway.url", jdbcUrl("training_catalog")),
+                                Map.entry("spring.flyway.user", "test"),
+                                Map.entry("spring.flyway.password", "test"),
+                                Map.entry("spring.rabbitmq.host", rabbitmqHost),
+                                Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmqPort)),
+                                Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer),
+                                Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                                Map.entry("spring.flyway.enabled", "true"),
+                                Map.entry("spring.flyway.locations", "classpath:db/migration/catalog")));
 
                 enrollmentUrl = startService(
                         "com.poc.training.enrollment.EnrollmentServiceApplication",
-                        "enrollment-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_enrollment"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "validate",
-                                "spring.flyway.enabled", "true",
-                                "client.catalog.url", catalogUrl));
+                        "enrollment-service", Map.ofEntries(
+                                Map.entry("spring.datasource.url", jdbcUrl("training_enrollment")),
+                                Map.entry("spring.datasource.username", "test"),
+                                Map.entry("spring.datasource.password", "test"),
+                                Map.entry("spring.flyway.url", jdbcUrl("training_enrollment")),
+                                Map.entry("spring.flyway.user", "test"),
+                                Map.entry("spring.flyway.password", "test"),
+                                Map.entry("spring.rabbitmq.host", rabbitmqHost),
+                                Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmqPort)),
+                                Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer),
+                                Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                                Map.entry("spring.flyway.enabled", "true"),
+                                Map.entry("spring.flyway.locations", "classpath:db/migration/enrollment"),
+                                Map.entry("client.catalog.url", catalogUrl)));
 
                 employeeUrl = startService(
                         "com.poc.training.employee.EmployeeServiceApplication",
-                        "employee-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_employee"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "validate",
-                                "spring.flyway.enabled", "true",
-                                "client.enrollment.url", enrollmentUrl));
+                        "employee-service", Map.ofEntries(
+                                Map.entry("spring.datasource.url", jdbcUrl("training_employee")),
+                                Map.entry("spring.datasource.username", "test"),
+                                Map.entry("spring.datasource.password", "test"),
+                                Map.entry("spring.flyway.url", jdbcUrl("training_employee")),
+                                Map.entry("spring.flyway.user", "test"),
+                                Map.entry("spring.flyway.password", "test"),
+                                Map.entry("spring.rabbitmq.host", rabbitmqHost),
+                                Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmqPort)),
+                                Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer),
+                                Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                                Map.entry("spring.flyway.enabled", "true"),
+                                Map.entry("spring.flyway.locations", "classpath:db/migration/employee"),
+                                Map.entry("client.enrollment.url", enrollmentUrl)));
 
                 enrollmentUrl = restartService(
                         "com.poc.training.enrollment.EnrollmentServiceApplication",
-                        "enrollment-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_enrollment"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "validate",
-                                "spring.flyway.enabled", "true",
-                                "client.catalog.url", catalogUrl,
-                                "client.employee.url", employeeUrl));
+                        "enrollment-service", Map.ofEntries(
+                                Map.entry("spring.datasource.url", jdbcUrl("training_enrollment")),
+                                Map.entry("spring.datasource.username", "test"),
+                                Map.entry("spring.datasource.password", "test"),
+                                Map.entry("spring.flyway.url", jdbcUrl("training_enrollment")),
+                                Map.entry("spring.flyway.user", "test"),
+                                Map.entry("spring.flyway.password", "test"),
+                                Map.entry("spring.rabbitmq.host", rabbitmqHost),
+                                Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmqPort)),
+                                Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer),
+                                Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                                Map.entry("spring.flyway.enabled", "true"),
+                                Map.entry("spring.flyway.locations", "classpath:db/migration/enrollment"),
+                                Map.entry("client.catalog.url", catalogUrl),
+                                Map.entry("client.employee.url", employeeUrl)));
 
                 certificationUrl = startService(
                         "com.poc.training.certification.CertificationServiceApplication",
-                        "certification-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_certification"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "validate",
-                                "spring.flyway.enabled", "true"));
+                        "certification-service", Map.ofEntries(
+                                Map.entry("spring.datasource.url", jdbcUrl("training_certification")),
+                                Map.entry("spring.datasource.username", "test"),
+                                Map.entry("spring.datasource.password", "test"),
+                                Map.entry("spring.flyway.url", jdbcUrl("training_certification")),
+                                Map.entry("spring.flyway.user", "test"),
+                                Map.entry("spring.flyway.password", "test"),
+                                Map.entry("spring.rabbitmq.host", rabbitmqHost),
+                                Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmqPort)),
+                                Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer),
+                                Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                                Map.entry("spring.flyway.enabled", "true"),
+                                Map.entry("spring.flyway.locations", "classpath:db/migration/certification")));
 
                 notificationUrl = startService(
                         "com.poc.training.notification.NotificationServiceApplication",
-                        "notification-service", Map.of(
-                                "spring.datasource.url", jdbcUrl("training_notification"),
-                                "spring.datasource.username", "test",
-                                "spring.datasource.password", "test",
-                                "spring.rabbitmq.host", rabbitmqHost,
-                                "spring.rabbitmq.port", String.valueOf(rabbitmqPort),
-                                "spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer,
-                                "spring.jpa.hibernate.ddl-auto", "validate",
-                                "spring.flyway.enabled", "true"));
+                        "notification-service", Map.ofEntries(
+                                Map.entry("spring.datasource.url", jdbcUrl("training_notification")),
+                                Map.entry("spring.datasource.username", "test"),
+                                Map.entry("spring.datasource.password", "test"),
+                                Map.entry("spring.flyway.url", jdbcUrl("training_notification")),
+                                Map.entry("spring.flyway.user", "test"),
+                                Map.entry("spring.flyway.password", "test"),
+                                Map.entry("spring.rabbitmq.host", rabbitmqHost),
+                                Map.entry("spring.rabbitmq.port", String.valueOf(rabbitmqPort)),
+                                Map.entry("spring.security.oauth2.resourceserver.jwt.issuer-uri", keycloakIssuer),
+                                Map.entry("spring.jpa.hibernate.ddl-auto", "validate"),
+                                Map.entry("spring.flyway.enabled", "true"),
+                                Map.entry("spring.flyway.locations", "classpath:db/migration/notification"),
+                                Map.entry("management.health.mail.enabled", "false")));
 
                 catalogClient = WebClient.builder().baseUrl(catalogUrl)
                         .defaultHeader("Content-Type", "application/json").build();
@@ -207,6 +227,7 @@ public abstract class BaseE2ETest {
 
                 log.info("=== All E2E services started ===");
                 initialized = true;
+                registerShutdownHook();
             } catch (Exception e) {
                 log.error("E2E setup failed, cleaning up containers", e);
                 stopAll();
@@ -217,13 +238,6 @@ public abstract class BaseE2ETest {
 
     @AfterAll
     void tearDownAll() {
-        synchronized (BaseE2ETest.class) {
-            if (!initialized) return;
-            log.info("=== Tearing down E2E infrastructure ===");
-            stopAll();
-            initialized = false;
-            setupAttempted = false;
-        }
     }
 
     protected static void stopAll() {
@@ -231,9 +245,46 @@ public abstract class BaseE2ETest {
             try { ctx.close(); } catch (Exception ignored) {}
         });
         contexts.clear();
+        catalogUrl = null;
+        enrollmentUrl = null;
+        certificationUrl = null;
+        notificationUrl = null;
+        employeeUrl = null;
+        catalogClient = null;
+        enrollmentClient = null;
+        certificationClient = null;
+        notificationClient = null;
+        employeeClient = null;
         if (rabbitmq != null) try { rabbitmq.stop(); } catch (Exception ignored) {}
         if (postgres != null) try { postgres.stop(); } catch (Exception ignored) {}
         if (keycloak != null) try { keycloak.stop(); } catch (Exception ignored) {}
+        rabbitmq = null;
+        postgres = null;
+        keycloak = null;
+        initialized = false;
+    }
+
+    private static void waitForKeycloakReady(int keycloakPort) {
+        log.info("Waiting for Keycloak realm to be ready...");
+        WebClient hc = WebClient.create();
+        Awaitility.await()
+                .atMost(180, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    try {
+                        String wellKnown = hc.get()
+                                .uri("http://localhost:" + keycloakPort + "/realms/training-realm/.well-known/openid-configuration")
+                                .retrieve().bodyToMono(String.class).block(Duration.ofSeconds(5));
+                        assertThat(wellKnown).contains("issuer");
+                        String certs = hc.get()
+                                .uri("http://localhost:" + keycloakPort + "/realms/training-realm/protocol/openid-connect/certs")
+                                .retrieve().bodyToMono(String.class).block(Duration.ofSeconds(5));
+                        assertThat(certs).contains("keys");
+                    } catch (Exception e) {
+                        throw new AssertionError("Keycloak not ready: " + e.getMessage());
+                    }
+                });
+        log.info("Keycloak realm ready");
     }
 
     // ── Service lifecycle ──
@@ -318,6 +369,7 @@ public abstract class BaseE2ETest {
             var stmt = conn.createStatement();
             for (String db : new String[]{"training_catalog", "training_enrollment",
                     "training_certification", "training_notification", "training_employee"}) {
+                try { stmt.executeUpdate("DROP DATABASE IF EXISTS " + db + " WITH (FORCE)"); } catch (Exception ignored) {}
                 try { stmt.executeUpdate("CREATE DATABASE " + db); } catch (Exception ignored) {}
             }
         } catch (Exception e) {
@@ -335,14 +387,30 @@ public abstract class BaseE2ETest {
     protected static String instructorToken() { return getToken("instructor1", "instructor1"); }
     protected static String employeeToken() { return getToken("employee1", "employee1"); }
 
+    private static volatile boolean shutdownHookRegistered = false;
+
+    private static void registerShutdownHook() {
+        synchronized (BaseE2ETest.class) {
+            if (shutdownHookRegistered) return;
+            shutdownHookRegistered = true;
+            Runtime.getRuntime().addShutdownHook(new Thread(BaseE2ETest::stopAll));
+        }
+    }
+
     protected static String getToken(String username, String password) {
+        if (keycloak == null || !keycloak.isRunning()) {
+            throw new IllegalStateException("Keycloak is not running - E2E infrastructure not initialized");
+        }
         int kcPort = keycloak.getMappedPort(8080);
         JsonNode resp = WebClient.create().post()
                 .uri("http://localhost:" + kcPort + "/realms/training-realm/protocol/openid-connect/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .bodyValue("grant_type=password&client_id=training-catalog-client"
                         + "&client_secret=catalog-secret-2024&username=" + username + "&password=" + password)
-                .retrieve().bodyToMono(JsonNode.class).block();
+                .retrieve().bodyToMono(JsonNode.class).block(Duration.ofSeconds(10));
+        if (resp == null || resp.get("access_token") == null) {
+            throw new IllegalStateException("Failed to obtain access token for " + username + ": " + resp);
+        }
         return resp.get("access_token").asText();
     }
 
