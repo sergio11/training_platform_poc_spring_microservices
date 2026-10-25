@@ -6,13 +6,13 @@
 [![Spring Boot 4](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.13-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Keycloak](https://img.shields.io/badge/Keycloak-24.0-008080?style=for-the-badge&logo=keycloak&logoColor=white)](https://www.keycloak.org/)
+[![Keycloak](https://img.shields.io/badge/Keycloak-26.0-008080?style=for-the-badge&logo=keycloak&logoColor=white)](https://www.keycloak.org/)
 [![Kong Gateway](https://img.shields.io/badge/Kong-3.6-003459?style=for-the-badge&logo=kong&logoColor=white)](https://konghq.com/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.36-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![JaCoCo 100%](https://img.shields.io/badge/JaCoCo-100%25-brightgreen?style=for-the-badge)](#-test-coverage--quality-gates)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-A production-grade Proof-of-Concept demonstrating an **Event-Driven Microservices Architecture** for enterprise training management. Built with Spring Boot 4, Database-per-Service, Transactional Outbox, Kong Gateway, Keycloak OAuth2/OIDC, Resilience4j, and OpenTelemetry observability — validated by a full end-to-end test suite and 100% test coverage.
+A production-grade Proof-of-Concept demonstrating an **Event-Driven Microservices Architecture** for enterprise training management. Built with Spring Boot 4, Database-per-Service, Transactional Outbox, Kong Gateway, Keycloak OAuth2/OIDC, Resilience4j, and a Prometheus/Grafana observability stack — validated by a full end-to-end test suite and 100% test coverage.
 
 ---
 
@@ -112,7 +112,7 @@ RabbitMQ was selected as the asynchronous messaging broker over Kafka for this s
 | **Idempotent Consumers** | `ProcessedEvent` tracking table prevents duplicate event execution on at-least-once message delivery |
 | **100% JaCoCo Coverage** | Strict build gate enforcing 100% instruction, branch, line, and method coverage across all 6 Gradle modules |
 | **Real Infrastructure E2E** | Comprehensive E2E test suite running all 5 microservices alongside PostgreSQL, RabbitMQ, and Keycloak containers |
-| **Cloud-Native Topology** | Kubernetes manifests with HPA (Horizontal Pod Autoscalers), ConfigMaps, Secrets, and Liveness/Readiness probes |
+| **Cloud-Native Topology** | Kubernetes manifests with HPA, ConfigMaps, Secrets, startup/liveness/readiness probes, and default-deny NetworkPolicies |
 
 ### Trade-offs & Production Considerations
 
@@ -130,62 +130,40 @@ RabbitMQ was selected as the asynchronous messaging broker over Kafka for this s
 
 ### System Topology
 
+A compact view of the runtime architecture: the gateway is the only public entry point, services own their data, and business events flow asynchronously through RabbitMQ.
+
 ```mermaid
-flowchart TD
-    Client([Web / Mobile Client]) -->|HTTPS / Bearer JWT| Kong["Kong API Gateway<br/>:8000<br/>JWT Validation + Rate Limiting"]
+flowchart LR
+    Client([Client]) -->|Bearer JWT| Kong[Kong API Gateway]
 
-    subgraph Identity ["Identity & Access"]
-        Keycloak["Keycloak OIDC<br/>:8080<br/>training-realm"]
+    subgraph Identity ["Identity"]
+        Keycloak[(Keycloak OIDC)]
     end
+    Keycloak -.->|OIDC and JWT| Kong
 
-    Client -.->|Authenticate| Keycloak
-
-    subgraph Services ["Microservices Layer (Spring Boot 4)"]
-        Catalog["Training Catalog Service<br/>:8081"]
-        Enrollment["Enrollment Service<br/>:8082"]
-        Certification["Certification Service<br/>:8083"]
-        Notification["Notification Service<br/>:8084"]
-        Employee["Employee Service<br/>:8085"]
+    subgraph Services ["Spring Boot 4 microservices"]
+        Catalog[Catalog :8081]
+        Enrollment[Enrollment :8082]
+        Certification[Certification :8083]
+        Notification[Notification :8084]
+        Employee[Employee :8085]
     end
+    Kong -->|5 REST routes| Services
 
-    Kong -->|/api/v1/courses| Catalog
-    Kong -->|/api/v1/enrollments| Enrollment
-    Kong -->|/api/v1/certificates| Certification
-    Kong -->|/api/v1/notifications| Notification
-    Kong -->|/api/v1/employees| Employee
-
-    Enrollment -->|HTTP + Token Relay<br/>(Resilience4j)| Catalog
-    Enrollment -->|HTTP + Token Relay<br/>(Resilience4j)| Employee
-
-    subgraph Messaging ["Message Broker"]
-        RabbitMQ(("RabbitMQ<br/>training.exchange (topic)"))
+    subgraph Data ["Data and messaging"]
+        MQ{{RabbitMQ topic exchange}}
+        DB[(PostgreSQL<br/>5 databases)]
     end
+    Services -->|outbox events| MQ
+    MQ -->|domain events| Services
+    Services --> DB
 
-    Enrollment -->|outbox relay| RabbitMQ
-    Certification -->|outbox relay| RabbitMQ
-    Employee -->|outbox relay| RabbitMQ
-
-    RabbitMQ -->|enrollment.approved<br/>enrollment.cancelled| Catalog
-    RabbitMQ -->|course.completed| Certification
-    RabbitMQ -->|enrollment.*<br/>course.completed<br/>certificate.generated<br/>employee.*| Notification
-
-    subgraph Storage ["Database-per-Service (PostgreSQL)"]
-        DB1[(training_catalog)]
-        DB2[(training_enrollment)]
-        DB3[(training_certification)]
-        DB4[(training_notification)]
-        DB5[(training_employee)]
-    end
-
-    Catalog --> DB1
-    Enrollment --> DB2
-    Certification --> DB3
-    Notification --> DB4
-    Employee --> DB5
+    Enrollment -.->|REST and token relay| Catalog
+    Enrollment -.->|REST and token relay| Employee
 
     style Kong fill:#1a1a2e,color:#fff
     style Keycloak fill:#008080,color:#fff
-    style RabbitMQ fill:#ff6600,color:#fff
+    style MQ fill:#ff6600,color:#fff
     style Catalog fill:#6DB33F,color:#fff
     style Enrollment fill:#6DB33F,color:#fff
     style Certification fill:#6DB33F,color:#fff
@@ -337,7 +315,7 @@ Synchronous inter-service calls made by `EnrollmentService` (via `TrainingCatalo
 ```mermaid
 stateDiagram-v2
     [*] --> CLOSED
-    CLOSED --> OPEN: Failure rate > 50% (sliding window: 10 calls)
+    CLOSED --> OPEN: Failure rate above 50% in a 10-call sliding window
     OPEN --> HALF_OPEN: Wait 10 seconds
     HALF_OPEN --> CLOSED: 3 consecutive calls succeed
     HALF_OPEN --> OPEN: Any call fails
@@ -368,61 +346,17 @@ All consumers implement idempotent message handling via a dedicated `processed_e
 
 All requests pass through Kong Gateway on `http://localhost:8000` with a valid Keycloak Bearer JWT token.
 
-### Training Catalog Service (`/api/v1/courses`)
+### Endpoint Summary
 
-| Method | Endpoint | Description | Allowed Roles |
+| Service | Base path | Main operations | Write access |
 |---|---|---|---|
-| `GET` | `/api/v1/courses` | List courses (paginated, sorted, filterable) | `employee`, `instructor`, `admin` |
-| `GET` | `/api/v1/courses/active` | List active courses | `employee`, `instructor`, `admin` |
-| `GET` | `/api/v1/courses/{id}` | Get course by ID | `employee`, `instructor`, `admin` |
-| `POST` | `/api/v1/courses` | Create new course | `admin` |
-| `PUT` | `/api/v1/courses/{id}` | Update course details / capacity | `instructor`, `admin` |
-| `DELETE` | `/api/v1/courses/{id}` | Soft-deactivate course | `admin` |
-| `PATCH` | `/api/v1/courses/{id}/complete` | Mark course as completed | `instructor`, `admin` |
-| `PATCH` | `/api/v1/courses/{id}/seats/increment` | Increment enrolled seats | `instructor`, `admin`, `employee` |
-| `PATCH` | `/api/v1/courses/{id}/seats/decrement` | Decrement enrolled seats | `instructor`, `admin`, `employee` |
+| **Training Catalog** | `/api/v1/courses` | List, get, create, update, deactivate, complete, adjust seats | `admin` (create/deactivate); `instructor`, `admin` (update/complete) |
+| **Enrollment** | `/api/v1/enrollments` | List, get, enroll, approve, reject, complete, cancel | `employee`* (own enroll/cancel); `instructor`, `admin` |
+| **Certification** | `/api/v1/certificates` | List, get by ID, get by certificate number | Read-only |
+| **Notification** | `/api/v1/notifications` | List, get | Read-only |
+| **Employee** | `/api/v1/employees` | List, get, find by number, existence check, create, update, deactivate | `admin` |
 
-### Enrollment Service (`/api/v1/enrollments`)
-
-| Method | Endpoint | Description | Allowed Roles |
-|---|---|---|---|
-| `GET` | `/api/v1/enrollments` | List enrollments (filterable by `employeeId`) | `employee`*, `instructor`, `admin` |
-| `GET` | `/api/v1/enrollments/{id}` | Get enrollment by ID | `employee`*, `instructor`, `admin` |
-| `GET` | `/api/v1/enrollments/active/{employeeId}` | Check active enrollments | `instructor`, `admin` |
-| `POST` | `/api/v1/enrollments` | Enroll employee in a course | `employee`*, `instructor`, `admin` |
-| `PATCH` | `/api/v1/enrollments/{id}/approve` | Approve pending enrollment | `instructor`, `admin` |
-| `PATCH` | `/api/v1/enrollments/{id}/complete` | Mark enrollment completed (triggers certificate) | `instructor`, `admin` |
-| `PATCH` | `/api/v1/enrollments/{id}/reject` | Reject pending enrollment | `instructor`, `admin` |
-| `PATCH` | `/api/v1/enrollments/{id}/cancel` | Cancel enrollment | `employee`*, `instructor`, `admin` |
-
-### Certification Service (`/api/v1/certificates`)
-
-| Method | Endpoint | Description | Allowed Roles |
-|---|---|---|---|
-| `GET` | `/api/v1/certificates` | List certificates by `employeeId` | `employee`*, `instructor`, `admin` |
-| `GET` | `/api/v1/certificates/{id}` | Get certificate by ID | `employee`*, `instructor`, `admin` |
-| `GET` | `/api/v1/certificates/number/{number}` | Get certificate by unique number | `employee`*, `instructor`, `admin` |
-
-### Notification Service (`/api/v1/notifications`)
-
-| Method | Endpoint | Description | Allowed Roles |
-|---|---|---|---|
-| `GET` | `/api/v1/notifications` | List notifications for recipient | `employee`*, `instructor`, `admin` |
-| `GET` | `/api/v1/notifications/{id}` | Get notification by ID | `employee`*, `instructor`, `admin` |
-
-### Employee Service (`/api/v1/employees`)
-
-| Method | Endpoint | Description | Allowed Roles |
-|---|---|---|---|
-| `GET` | `/api/v1/employees` | List employees (paginated, sorted) | `instructor`, `admin` |
-| `GET` | `/api/v1/employees/{id}` | Get employee details | `employee`, `instructor`, `admin` |
-| `GET` | `/api/v1/employees/number/{number}` | Find employee by business number | `instructor`, `admin` |
-| `GET` | `/api/v1/employees/{id}/exists` | Fast existence check | `employee`, `instructor`, `admin` |
-| `POST` | `/api/v1/employees` | Create employee profile | `admin` |
-| `PUT` | `/api/v1/employees/{id}` | Update employee profile | `admin` |
-| `DELETE` | `/api/v1/employees/{id}` | Soft-deactivate employee profile | `admin` |
-
-> \* **Data Ownership Verification**: Users with only the `employee` role are restricted to accessing and modifying exclusively their own records matching their Keycloak `employeeId` claim.
+> \* **Data ownership:** users with only the `employee` role can access or modify exclusively their own records, matching the Keycloak `employeeId` claim.
 
 ---
 
@@ -461,7 +395,7 @@ rake infra:start
 | Container | Image | Port | Description |
 |---|---|:---:|---|
 | `postgres` | `postgres:16-alpine` | `5432` | Multi-database relational storage |
-| `keycloak` | `quay.io/keycloak/keycloak:24.0.1` | `8080` | OIDC Identity Provider |
+| `keycloak` | `quay.io/keycloak/keycloak:26.0` | `8080` | OIDC Identity Provider |
 | `rabbitmq` | `rabbitmq:3.13-management-alpine` | `5672`, `15672` | AMQP Message Broker & Web Management |
 | `kong` | `kong:3.6` | `8000`, `8001` | API Gateway & Admin API |
 | `prometheus` | `prom/prometheus:v2.50.0` | `9090` | Metrics scraper from `/actuator/prometheus` |
@@ -480,35 +414,77 @@ The `infra/k8s` directory provides complete declarative Kubernetes specification
 - **ConfigMaps & Secrets**: Externalized connection strings, broker topology, realm import, and a deterministic RSA key for Kong JWT validation.
 - **Observability**: Prometheus scraping all five services plus Kong and the OTel collector; Grafana, Jaeger, and Loki deployed alongside.
 
+### Kubernetes Validation Evidence
+
+Validated on **2026-10-25** against the kind cluster `poc-qa` (Kubernetes `v1.36.1`, Podman rootful), namespace `training-platform`.
+
+| Validation | Observed result |
+|---|---|
+| Workloads | **14/14 pods Running and Ready** |
+| Container restarts | **0** |
+| CrashLoopBackOff / Error pods | none |
+| Smoke suite (`rake k8s:smoke`) | **PASS** |
+| Full E2E flow (`rake k8s:test`) | **PASS** (`course=2`, `employee=4`) |
+| Kong entry point | `401` without JWT, `200` with JWT |
+| Certificate issued | `CERT-20261025-000001` |
+| Notifications | `EMPLOYEE_CREATED`, `ENROLLMENT_CREATED`, `ENROLLMENT_APPROVED`, `COURSE_COMPLETED`, `CERTIFICATE_GENERATED` all `DELIVERED` |
+| Outbox and RabbitMQ | fully processed, `0` dead-letter messages |
+| Prometheus targets | all `UP` |
+
+![Grafana dashboard showing JVM and HTTP metrics from the Kubernetes deployment](docs/evidence/grafana-dashboard.png)
+
+<details>
+<summary>Captured <code>kubectl get pods -n training-platform</code> output</summary>
+
+```text
+NAME                                              READY   STATUS    RESTARTS   AGE
+postgresql-0                                      1/1     Running   0          40m
+training-catalog-service-7d4cf44469-lhc7m         1/1     Running   0          36m
+training-certification-service-6f67b4777d-fp7kq   1/1     Running   0          36m
+training-employee-service-c9fbcd85d-24c45         1/1     Running   0          36m
+training-enrollment-service-677f55f5c6-5hps6      1/1     Running   0          36m
+training-grafana-5cc4cf646c-kh44x                 1/1     Running   0          24m
+training-jaeger-599dbd59f8-rlb9g                  1/1     Running   0          36m
+training-keycloak-7c4f9c596f-xw9nd                1/1     Running   0          40m
+training-kong-6fdf5466fb-j5l2v                    1/1     Running   0          24m
+training-loki-7dcf67448f-dsx4p                    1/1     Running   0          36m
+training-notification-service-c7ddbcc85-2l4qv     1/1     Running   0          36m
+training-otel-collector-6c94cddbdd-ld2lp          1/1     Running   0          24m
+training-prometheus-7694b9cd7f-cvg8w              1/1     Running   0          36m
+training-rabbitmq-7478966df-7r42x                 1/1     Running   0          40m
+```
+
+</details>
+
+The checks are implemented in [`qa/smoke.rb`](qa/smoke.rb) and [`qa/run_all.rb`](qa/run_all.rb). Reproduce them with:
+
+```powershell
+$env:CONTAINER_CONNECTION='podman-machine-default-root'
+rake k8s:smoke
+rake k8s:test
+```
+
 ---
 
 ## 🧪 Testing & Quality
 
 ### Test Pyramid
 
+The suite is organized in three layers, from fast isolated checks to the full platform flow:
+
 ```mermaid
-flowchart TB
-    subgraph E2E ["E2E Tests (~55 tests)"]
-        E1["Full stack verification with Testcontainers"]
-        E2["PostgreSQL + RabbitMQ + Keycloak + 5 Spring Boot microservices"]
-    end
-
-    subgraph Integration ["Integration Tests"]
-        I1["Per-service slice tests with real containers"]
-        I2["CourseControllerIntegrationTest, OutboxSchedulerIntegrationTest, etc."]
-    end
-
-    subgraph Unit ["Unit Tests"]
-        U1["Fast Mockito isolation tests"]
-        U2["Services, Mappers, Specifications, Controllers, Configuration"]
-    end
-
+flowchart BT
+    Unit["Unit tests<br/>Mockito · services, controllers, mappers"]
+    Integration["Integration tests<br/>Spring slices · Testcontainers"]
+    E2E["E2E tests<br/>5 services · PostgreSQL · RabbitMQ · Keycloak"]
     Unit --> Integration --> E2E
 
-    style E2E fill:#6DB33F,color:#fff
-    style Integration fill:#3182ce,color:#fff
     style Unit fill:#dd6b20,color:#fff
+    style Integration fill:#3182ce,color:#fff
+    style E2E fill:#6DB33F,color:#fff
 ```
+
+Unit tests form the broad base; integration tests exercise persistence and messaging with real containers; the E2E layer validates the complete business flow through Kong.
 
 ### Test Coverage & Quality Gates
 
@@ -544,7 +520,7 @@ Enforced in `build.gradle.kts` via `JacocoCoverageVerification` requiring **100%
 ```bash
 rake infra:start
 # or manually via Docker Compose:
-docker compose -f infra/docker/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 ### Step 2: Run All Tests & Verify 100% Coverage
