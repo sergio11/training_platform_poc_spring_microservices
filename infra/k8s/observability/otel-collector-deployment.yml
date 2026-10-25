@@ -31,11 +31,11 @@ spec:
               readOnly: true
           resources:
             requests:
-              memory: "128Mi"
+              memory: "192Mi"
               cpu: "100m"
             limits:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "512Mi"
+              cpu: "500m"
           livenessProbe:
             httpGet:
               path: /metrics

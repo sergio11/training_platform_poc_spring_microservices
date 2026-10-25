@@ -43,23 +43,24 @@ spec:
               command:
                 - rabbitmq-diagnostics
                 - check_port_connectivity
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            failureThreshold: 30
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 60
+            timeoutSeconds: 10
           livenessProbe:
-            exec:
-              command:
-                - rabbitmq-diagnostics
-                - ping
+            tcpSocket:
+              port: 5672
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            tcpSocket:
+              port: 5672
             initialDelaySeconds: 30
             periodSeconds: 10
-          readinessProbe:
-            exec:
-              command:
-                - rabbitmq-diagnostics
-                - check_port_connectivity
-            initialDelaySeconds: 10
-            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 5
       volumes:
         - name: rabbitmq-definitions
           configMap:

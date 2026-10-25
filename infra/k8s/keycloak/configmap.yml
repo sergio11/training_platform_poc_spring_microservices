@@ -8,7 +8,6 @@ data:
   KC_DB_URL: "jdbc:postgresql://postgresql:5432/keycloak"
   KC_DB_USERNAME: "postgres"
   KC_HOSTNAME_STRICT: "false"
+  KC_HOSTNAME: "http://keycloak:8080"
   KC_HTTP_ENABLED: "true"
-  KC_PROXY: "edge"
-  KC_HTTP_RELATIVE_PATH: "/auth"
   REALM: "training-realm"

@@ -13,8 +13,10 @@ spec:
       protocol: TCP
       port: 8000
       targetPort: 8000
+      nodePort: 30080
     - name: admin
       protocol: TCP
       port: 8001
       targetPort: 8001
+      nodePort: 30081
   type: NodePort

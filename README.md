@@ -470,13 +470,15 @@ rake infra:start
 | `loki` | `grafana/loki:2.9.4` | `3100` | Centralized log aggregator |
 | `otel-collector` | `otel/opentelemetry-collector-contrib:0.94.0` | `4317`, `4318` | OpenTelemetry gRPC / HTTP pipeline |
 
-### Kubernetes Deployment (Production Manifests)
+### Kubernetes Deployment (kind + Podman)
 
 The `infra/k8s` directory provides complete declarative Kubernetes specifications for the `training-platform` namespace:
-- **Deployments & StatefulSets**: Dedicated pods for each microservice with resource requests/limits (256Mi-512Mi RAM, 250m-500m CPU).
-- **Horizontal Pod Autoscaling (HPA)**: Automatically scales services between 2 and 10 pods targeting 70% CPU and 80% Memory utilization.
-- **Health Probes**: Configured Liveness and Readiness probes against Spring Boot Actuator (`/actuator/health`).
-- **ConfigMaps & Secrets**: Externalized connection strings, broker credentials, and JWT issuer endpoints.
+- **Deployments & StatefulSets**: Dedicated pods for each microservice with resource requests/limits and persistent storage for PostgreSQL.
+- **Horizontal Pod Autoscaling (HPA)**: HPA manifests for every service (requires a metrics server to scale in-cluster).
+- **Health Probes**: Startup, liveness, and readiness probes against Spring Boot Actuator (`/actuator/health/liveness` and `/actuator/health/readiness`).
+- **NetworkPolicies**: Default-deny with explicit service-to-service, Kong, Keycloak, RabbitMQ, PostgreSQL, and Prometheus rules.
+- **ConfigMaps & Secrets**: Externalized connection strings, broker topology, realm import, and a deterministic RSA key for Kong JWT validation.
+- **Observability**: Prometheus scraping all five services plus Kong and the OTel collector; Grafana, Jaeger, and Loki deployed alongside.
 
 ---
 
@@ -557,10 +559,28 @@ rake test:run
 ./gradlew e2eTest
 ```
 
-### Step 4: Deploy to Local Kubernetes
-```bash
-rake k8s:deploy
+### Step 4: Deploy to Local Kubernetes (kind + Podman)
+
+Prerequisites: `kind`, `kubectl`, and a Podman machine. The QA tasks use the rootful Podman connection `podman-machine-default-root`.
+
+```powershell
+$env:CONTAINER_CONNECTION='podman-machine-default-root'
+rake k8s:cluster:create   # create the kind cluster 'poc-qa'
+rake k8s:build            # build the five Spring Boot images
+rake k8s:load             # load app + infra images into the kind node
+rake k8s:deploy           # namespace, data stores, Keycloak, services, observability, Kong
+rake k8s:wait             # wait for every rollout
+rake k8s:smoke            # readiness, OIDC, Kong, databases, queues, Prometheus
+rake k8s:test             # full E2E business flow through Kong
 ```
+
+`rake k8s:up` chains build, load, deploy, wait, and smoke on an existing cluster.
+
+Local endpoints:
+- **Kong proxy:** http://localhost:8000 (NodePort `30080`)
+- **Kong admin:** http://localhost:8001 (NodePort `30081`)
+- **Keycloak:** `kubectl port-forward svc/keycloak 18080:8080 -n training-platform`
+- **Prometheus:** `kubectl port-forward svc/prometheus 19090:9090 -n training-platform`
 
 ### Pre-configured Test Users
 

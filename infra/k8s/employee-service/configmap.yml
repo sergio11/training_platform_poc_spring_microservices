@@ -9,3 +9,4 @@ data:
   SPRING_RABBITMQ_HOST: "rabbitmq"
   SPRING_RABBITMQ_PORT: "5672"
   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://keycloak:8080/realms/training-realm"
+  ENROLLMENT_SERVICE_URL: "http://training-enrollment-service:8082"

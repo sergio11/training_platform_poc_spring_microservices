@@ -6,7 +6,7 @@ metadata:
   labels:
     app: training-certification-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: training-certification-service
@@ -30,11 +30,11 @@ spec:
               memory: "256Mi"
               cpu: "250m"
             limits:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "500m"
           startupProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8083
             initialDelaySeconds: 10
             periodSeconds: 10

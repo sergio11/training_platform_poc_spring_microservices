@@ -41,25 +41,34 @@ spec:
               readOnly: true
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
               memory: "256Mi"
-              cpu: "250m"
+              cpu: "200m"
+            limits:
+              memory: "768Mi"
+              cpu: "500m"
+          startupProbe:
+            exec:
+              command:
+                - kong
+                - health
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             exec:
               command:
                 - kong
                 - health
-            initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
               command:
                 - kong
                 - health
-            initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 5
       volumes:
         - name: kong-config
           configMap:

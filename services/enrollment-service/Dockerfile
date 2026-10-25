@@ -5,7 +5,7 @@ COPY gradle/ gradle/
 COPY build.gradle.kts settings.gradle.kts ./
 COPY services/enrollment-service/ services/enrollment-service/
 COPY shared/ shared/
-RUN ./gradlew :services:enrollment-service:bootJar --no-daemon -x test
+RUN sh gradlew :services:enrollment-service:bootJar --no-daemon -x test
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

@@ -28,6 +28,11 @@ spec:
               value: "true"
           ports:
             - containerPort: 8080
+            - containerPort: 9000
+          volumeMounts:
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import/realm-export.json
+              subPath: realm-export.json
           envFrom:
             - configMapRef:
                 name: training-keycloak-config
@@ -38,25 +43,36 @@ spec:
               memory: "512Mi"
               cpu: "500m"
             limits:
-              memory: "1Gi"
+              memory: "1536Mi"
               cpu: "1000m"
           startupProbe:
             httpGet:
               path: /health/ready
-              port: 8080
-            initialDelaySeconds: 15
+              port: 9000
+            initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 30
+            failureThreshold: 60
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /health/live
-              port: 8080
+              port: 9000
             initialDelaySeconds: 60
             periodSeconds: 10
+            failureThreshold: 5
+            timeoutSeconds: 10
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 8080
+              port: 9000
             initialDelaySeconds: 30
             periodSeconds: 5
+            failureThreshold: 5
+            timeoutSeconds: 10
+      volumes:
+        - name: realm-import
+          configMap:
+            name: training-keycloak-realm
+            items:
+              - key: realm-export.json
+                path: realm-export.json

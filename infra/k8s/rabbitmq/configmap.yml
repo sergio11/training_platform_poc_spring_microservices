@@ -6,3 +6,5 @@ metadata:
 data:
   RABBITMQ_DEFAULT_USER: "guest"
   RABBITMQ_DEFAULT_PASS: "guest"
+  RABBITMQ_ERLANG_COOKIE: "training-qa-cookie-2024"
+  RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-setcookie training-qa-cookie-2024"

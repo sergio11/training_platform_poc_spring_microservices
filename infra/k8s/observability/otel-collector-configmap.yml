@@ -15,8 +15,8 @@ data:
     processors:
       memory_limiter:
         check_interval: 1s
-        limit_mib: 512
-        spike_limit_mib: 128
+        limit_mib: 384
+        spike_limit_mib: 96
       batch:
         timeout: 1s
         send_batch_size: 1024
@@ -33,6 +33,11 @@ data:
       loki:
         endpoint: http://loki:3100/loki/api/v1/push
     service:
+      telemetry:
+        metrics:
+          # The Prometheus exporter owns :8888; keep the collector's own
+          # telemetry on a separate port to avoid a bind conflict.
+          address: 0.0.0.0:8889
       pipelines:
         traces:
           receivers: [otlp]
