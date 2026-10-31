@@ -42,12 +42,16 @@ spec:
               port: 8888
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /metrics
               port: 8888
             initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 5
       volumes:
         - name: otel-config
           configMap:

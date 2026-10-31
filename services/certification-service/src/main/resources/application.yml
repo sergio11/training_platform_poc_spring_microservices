@@ -44,6 +44,22 @@ outbox:
   polling-interval: ${OUTBOX_POLLING_INTERVAL:5000}
 
 management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_LOGS_ENDPOINT:http://localhost:4318/v1/logs}
+  logging:
+    export:
+      otlp:
+        enabled: true
   endpoints:
     web:
       exposure:

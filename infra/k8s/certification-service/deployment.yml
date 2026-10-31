@@ -25,6 +25,11 @@ spec:
                 name: training-certification-config
             - secretRef:
                 name: training-certification-secret
+          env:
+            - name: OTEL_TRACES_ENDPOINT
+              value: "http://otel-collector:4318/v1/traces"
+            - name: OTEL_LOGS_ENDPOINT
+              value: "http://otel-collector:4318/v1/logs"
           resources:
             requests:
               memory: "256Mi"
@@ -38,17 +43,20 @@ spec:
               port: 8083
             initialDelaySeconds: 10
             periodSeconds: 10
-            failureThreshold: 30
-            timeoutSeconds: 5
+            failureThreshold: 90
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8083
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8083
             initialDelaySeconds: 20
             periodSeconds: 5
+            timeoutSeconds: 10

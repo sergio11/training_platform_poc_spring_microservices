@@ -52,23 +52,24 @@ spec:
                 - kong
                 - health
             periodSeconds: 5
-            timeoutSeconds: 5
-            failureThreshold: 30
+            timeoutSeconds: 10
+            failureThreshold: 60
           livenessProbe:
             exec:
               command:
                 - kong
                 - health
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             exec:
               command:
                 - kong
                 - health
             periodSeconds: 5
-            timeoutSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 5
       volumes:
         - name: kong-config
           configMap:

@@ -168,6 +168,60 @@ if targets_code == 200 && targets.is_a?(Hash)
   failures += 1 unless QA.check('scrape targets are up', up >= 5, "#{up}/#{active.length} up")
 end
 
+section 'Metrics server / HPA'
+begin
+  top_ok = QA.wait_until(timeout: 120, interval: 5, label: 'kubectl top nodes') do
+    _out, _err, top_status = QA.kubectl('top', 'nodes', allow_failure: true)
+    top_status.success?
+  end
+  failures += 1 unless QA.check('kubectl top nodes returns metrics', top_ok)
+rescue QA::Failure => e
+  failures += 1
+  puts "  [FAIL] kubectl top nodes returns metrics - #{e.message}"
+end
+
+begin
+  metrics_ready = QA.wait_until(timeout: 120, interval: 5, label: 'HPA CPU metrics') do
+    hpas = QA.kubectl_json('get', 'hpa', '--namespace', QA::NAMESPACE, '-o', 'json')
+    hpas.fetch('items', []).any? && hpas.fetch('items', []).all? do |hpa|
+      hpa.dig('status', 'currentMetrics').to_a.any? do |metric|
+        metric.dig('resource', 'name') == 'cpu' && metric.dig('resource', 'current', 'averageUtilization')
+      end
+    end
+  end
+  failures += 1 unless QA.check('all HPAs report CPU utilization', metrics_ready)
+rescue QA::Failure => e
+  failures += 1
+  puts "  [FAIL] all HPAs report CPU utilization - #{e.message}"
+end
+
+section 'Distributed tracing and logs'
+QA.port_forward('svc/jaeger', QA::JAEGER_LOCAL_PORT, 16686)
+QA.port_forward('svc/loki', QA::LOKI_LOCAL_PORT, 3100)
+
+begin
+  services_ok = QA.wait_until(timeout: 90, interval: 3, label: 'Jaeger services') do
+    code, body = QA.http_json(:get, "#{QA::JAEGER_URL}/api/services")
+    code == 200 && body.is_a?(Hash) && body.fetch('data', []).include?('training-catalog-service')
+  end
+  failures += 1 unless QA.check('Jaeger receives catalog-service traces', services_ok)
+rescue QA::Failure => e
+  failures += 1
+  puts "  [FAIL] Jaeger receives catalog-service traces - #{e.message}"
+end
+
+begin
+  logs_ok = QA.wait_until(timeout: 90, interval: 3, label: 'Loki logs') do
+    query = URI.encode_www_form_component('{service_name="training-catalog-service"}')
+    code, body = QA.http_json(:get, "#{QA::LOKI_URL}/loki/api/v1/query_range?query=#{query}&limit=5")
+    code == 200 && body.is_a?(Hash) && body.dig('data', 'result').to_a.any?
+  end
+  failures += 1 unless QA.check('Loki receives catalog-service logs', logs_ok)
+rescue QA::Failure => e
+  failures += 1
+  puts "  [FAIL] Loki receives catalog-service logs - #{e.message}"
+end
+
 puts
 if failures.zero?
   puts 'SMOKE RESULT: PASS'

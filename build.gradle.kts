@@ -79,6 +79,7 @@ subprojects {
                 }
             }
         )
+        dependsOn("test")
         violationRules {
             rule {
                 element = "BUNDLE"
@@ -87,8 +88,27 @@ subprojects {
                     value = "COVEREDRATIO"
                     minimum = "1.0".toBigDecimal()
                 }
+                limit {
+                    counter = "BRANCH"
+                    value = "COVEREDRATIO"
+                    minimum = "1.0".toBigDecimal()
+                }
+                limit {
+                    counter = "LINE"
+                    value = "COVEREDRATIO"
+                    minimum = "1.0".toBigDecimal()
+                }
+                limit {
+                    counter = "METHOD"
+                    value = "COVEREDRATIO"
+                    minimum = "1.0".toBigDecimal()
+                }
             }
         }
+    }
+
+    tasks.named("check") {
+        dependsOn("jacocoTestCoverageVerification")
     }
 
     // Integration test task
@@ -115,26 +135,10 @@ subprojects {
     }
 }
 
-// E2E test task at root level
-tasks.register("e2eTest", Test::class) {
-    useJUnitPlatform()
-    description = "Runs E2E tests"
+// Convenience alias: the E2E suite lives in the e2e-tests module, where the
+// Test task is configured with the container lifecycle and extended timeouts.
+tasks.register("e2eTest") {
     group = "verification"
-    maxParallelForks = 1
-    shouldRunAfter("test")
-    // @BeforeAll starts Postgres + RabbitMQ + Keycloak + 5 microservices (~11 min total)
-    systemProperty("junit.jupiter.execution.timeout.lifecycle.method.default", "1200s")
-    // Each individual test method should complete in under 2 minutes
-    systemProperty("junit.jupiter.execution.timeout.test.method.default", "120s")
-    systemProperty("testcontainers.ryuk.disabled", "true")
-    systemProperty("ryuk.disabled", "true")
-    environment("TESTCONTAINERS_RYUK_DISABLED", "true")
-    environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/docker_engine")
-}
-
-tasks.register("testAll", Test::class) {
-    useJUnitPlatform()
-    description = "Runs all tests: unit + integration"
-    group = "verification"
-    shouldRunAfter("test")
+    description = "Runs the full E2E suite defined in :e2e-tests"
+    dependsOn(":e2e-tests:test")
 }

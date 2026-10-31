@@ -185,6 +185,24 @@ namespace :k8s do
     Rake::Win32.windows? ? 'NUL' : '/dev/null'
   end
 
+  def kind_node_images(machine, node)
+    `podman machine ssh #{machine} sudo podman exec #{node} ctr -n k8s.io images ls -q 2>#{k8s_null}`
+      .split("\n").map(&:strip)
+  end
+
+  # `wsl.exe` sporadically returns exit code 0xffffffff after `ctr images import`
+  # has already succeeded. Verify the image before treating the command as failed.
+  def import_kind_image(machine, node, tar, image)
+    3.times do |attempt|
+      return if system("podman machine ssh #{machine} sudo podman exec #{node} ctr -n k8s.io images import #{tar}")
+      return if kind_node_images(machine, node).include?(image)
+
+      raise "Failed to import #{image} after #{attempt + 1} attempts" if attempt == 2
+
+      sleep 2
+    end
+  end
+
   namespace :cluster do
     desc "Create kind cluster '#{KIND_CLUSTER}' (Podman provider). Deletes it first if it exists."
     task :create do
@@ -265,6 +283,7 @@ namespace :k8s do
     docker.io/jaegertracing/all-in-one:1.54
     docker.io/grafana/loki:2.9.4
     docker.io/otel/opentelemetry-collector-contrib:0.94.0
+    registry.k8s.io/metrics-server/metrics-server:v0.7.2
   ].freeze
 
   desc 'Load app + infra images into the kind node (machine-local save/cp/ctr-import; Podman provider)'
@@ -272,20 +291,29 @@ namespace :k8s do
     use_qa_podman_connection
     machine = 'podman-machine-default'
     node = "#{KIND_CLUSTER}-control-plane"
-    puts '==> pull infra images inside the machine'
-    INFRA_IMAGES.each { |image| sh "podman machine ssh #{machine} sudo podman pull #{image}" }
+    puts '==> pull missing infra images inside the machine'
+    INFRA_IMAGES.each do |image|
+      next if system("podman machine ssh #{machine} sudo podman image exists #{image}")
+
+      sh "podman machine ssh #{machine} sudo podman pull #{image}"
+    end
 
     app_images = QA_SERVICES.map { |s| "docker.io/library/#{s[:image]}" }
     images = app_images + INFRA_IMAGES
+    existing = kind_node_images(machine, node)
     puts "==> save + copy + import #{images.length} images one by one (multi-image archives are unreliable with ctr)"
     images.each_with_index do |image, index|
+      if existing.include?(image)
+        puts "==> [#{index + 1}/#{images.length}] #{image} already imported, skipping"
+        next
+      end
       # /tmp lives on a small tmpfs inside the Podman machine; /var/tmp is on the ext4 disk.
       tar = "/var/tmp/kind-image-#{index}.tar"
       puts "==> [#{index + 1}/#{images.length}] #{image}"
       sh "podman machine ssh #{machine} sudo rm -f #{tar}"
       sh "podman machine ssh #{machine} sudo podman save -o #{tar} #{image}"
       sh "podman machine ssh #{machine} sudo podman cp #{tar} #{node}:#{tar}"
-      sh "podman machine ssh #{machine} sudo podman exec #{node} ctr -n k8s.io images import #{tar}"
+      import_kind_image(machine, node, tar, image)
       sh "podman machine ssh #{machine} sudo rm -f #{tar}"
     end
   end
@@ -295,10 +323,18 @@ namespace :k8s do
     sh "kubectl create configmap training-keycloak-realm --namespace #{K8S_NS} --from-file=realm-export.json=infra/keycloak/realm-export.json --dry-run=client -o yaml | kubectl apply -f -"
   end
 
+  desc 'Install metrics-server so HPA can read CPU/memory metrics'
+  task :metrics do
+    sh "kubectl apply -f infra/k8s/metrics-server/"
+    sh "kubectl rollout status deployment/metrics-server --namespace kube-system --timeout=300s"
+    sh "kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=300s"
+  end
+
   desc 'Deploy to Kubernetes (namespace + infra + services + observability + kong)'
   task :deploy do
     sh "kubectl apply -f infra/k8s/namespace.yml"
     Rake::Task['k8s:realm'].invoke
+    Rake::Task['k8s:metrics'].invoke
     sh "kubectl apply -f infra/k8s/postgresql/"
     sh "kubectl apply -f infra/k8s/rabbitmq/"
     sh "kubectl apply -f infra/k8s/keycloak/"
@@ -323,7 +359,9 @@ namespace :k8s do
     K8S_DEPLOYMENTS.each do |dep|
       sh "kubectl rollout status deployment/#{dep} --namespace #{K8S_NS} --timeout=600s"
     end
+    sh "kubectl rollout status deployment/metrics-server --namespace kube-system --timeout=300s"
     sh "kubectl wait --for=condition=Ready pods --all --namespace #{K8S_NS} --timeout=300s"
+    sh "kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=300s"
     Rake::Task['k8s:status'].invoke
   end
 
@@ -392,6 +430,7 @@ task :help do
       rake k8s:build        Build the 5 microservice images (Podman)
       rake k8s:load         Load images into the kind node
       rake k8s:realm        Generate Keycloak realm ConfigMap
+      rake k8s:metrics      Install metrics-server for HPA metrics
       rake k8s:deploy       Deploy to Kubernetes
       rake k8s:wait         Wait for rollout + all pods Ready
       rake k8s:status       Show platform status

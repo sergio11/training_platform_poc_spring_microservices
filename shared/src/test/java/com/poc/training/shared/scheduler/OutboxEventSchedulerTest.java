@@ -65,7 +65,7 @@ class OutboxEventSchedulerTest {
                 .retryCount(0)
                 .build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
 
@@ -77,7 +77,7 @@ class OutboxEventSchedulerTest {
 
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(Collections.emptyList());
         stubTransactionTemplate();
 
@@ -98,7 +98,7 @@ class OutboxEventSchedulerTest {
                 .eventType("EnrollmentApprovedEvent").payload("{\"id\":2}")
                 .routingKey("enrollment.approved").createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(List.of(event1, event2));
         stubTransactionTemplate();
 
@@ -117,7 +117,7 @@ class OutboxEventSchedulerTest {
                 .eventType("EnrollmentCreatedEvent").payload("{\"id\":1}")
                 .routingKey("enrollment.created").createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ down")).when(rabbitTemplate).send(anyString(), anyString(), any());
@@ -130,14 +130,34 @@ class OutboxEventSchedulerTest {
     }
 
     @Test
-    void shouldKeepPendingAfterMaxRetries() {
+    void shouldSkipEventThatAlreadyExhaustedRetries() {
         OutboxEvent event = OutboxEvent.builder()
                 .id(1L).aggregateType("Enrollment").aggregateId("agg-1")
                 .eventType("EnrollmentCreatedEvent").payload("{\"id\":1}")
                 .routingKey("enrollment.created").createdAt(LocalDateTime.now()).processed(false)
                 .retryCount(OutboxEventScheduler.MAX_RETRIES).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
+                .thenReturn(List.of(event));
+        stubTransactionTemplate();
+
+        outboxEventScheduler.processPendingEvents();
+
+        verify(rabbitTemplate, never()).send(anyString(), anyString(), any());
+        verify(outboxEventRepository, never()).save(any());
+        assertFalse(event.isProcessed());
+        assertEquals(OutboxEventScheduler.MAX_RETRIES, event.getRetryCount());
+    }
+
+    @Test
+    void shouldPersistMaxRetryCountWhenLastAttemptFails() {
+        OutboxEvent event = OutboxEvent.builder()
+                .id(1L).aggregateType("Enrollment").aggregateId("agg-1")
+                .eventType("EnrollmentCreatedEvent").payload("{\"id\":1}")
+                .routingKey("enrollment.created").createdAt(LocalDateTime.now()).processed(false)
+                .retryCount(OutboxEventScheduler.MAX_RETRIES - 1).build();
+
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ down")).when(rabbitTemplate).send(anyString(), anyString(), any());
@@ -146,6 +166,7 @@ class OutboxEventSchedulerTest {
 
         verify(outboxEventRepository).save(event);
         assertFalse(event.isProcessed());
+        assertEquals(OutboxEventScheduler.MAX_RETRIES, event.getRetryCount());
     }
 
     @Test
@@ -171,7 +192,7 @@ class OutboxEventSchedulerTest {
                         .createdAt(LocalDateTime.now()).processed(false).retryCount(0).build())
                 .toList();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(events);
         stubTransactionTemplate();
 
@@ -187,7 +208,7 @@ class OutboxEventSchedulerTest {
                 .eventType("EnrollmentCreatedEvent").payload("{}").routingKey("enrollment.created")
                 .createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
         doThrow(new RuntimeException("RabbitMQ down")).when(rabbitTemplate).send(anyString(), anyString(), any());
@@ -205,7 +226,7 @@ class OutboxEventSchedulerTest {
 
         outboxEventScheduler.processPendingEvents();
 
-        verify(outboxEventRepository, never()).findPendingEventsWithLock(any());
+        verify(outboxEventRepository, never()).findPendingEventsWithLock(any(), anyInt());
         verify(rabbitTemplate, never()).send(anyString(), anyString(), any());
     }
 
@@ -216,7 +237,7 @@ class OutboxEventSchedulerTest {
                 .eventType("UnknownEvent").payload("{}").routingKey("test.key")
                 .createdAt(LocalDateTime.now()).processed(false).retryCount(0).build();
 
-        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findPendingEventsWithLock(PageRequest.of(0, 100), OutboxEventScheduler.MAX_RETRIES))
                 .thenReturn(List.of(event));
         stubTransactionTemplate();
 

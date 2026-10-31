@@ -17,6 +17,14 @@ data:
         check_interval: 1s
         limit_mib: 384
         spike_limit_mib: 96
+      # Loki exporter 0.94 promotes labels through attribute hints. The hint is
+      # removed before the record is pushed and service.name is normalized to
+      # service_name (Prometheus label rules).
+      resource/loki:
+        attributes:
+          - action: insert
+            key: loki.resource.labels
+            value: service.name
       batch:
         timeout: 1s
         send_batch_size: 1024
@@ -49,5 +57,5 @@ data:
           exporters: [prometheus, logging]
         logs:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
-          exporters: [loki, logging]
+          processors: [memory_limiter, resource/loki, batch]
+          exporters: [loki]

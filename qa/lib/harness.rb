@@ -15,9 +15,13 @@ module QA
   KEYCLOAK_LOCAL_PORT = Integer(ENV.fetch('KEYCLOAK_LOCAL_PORT', '18080'))
   KONG_LOCAL_PORT     = Integer(ENV.fetch('KONG_LOCAL_PORT', '18000'))
   PROMETHEUS_LOCAL_PORT = Integer(ENV.fetch('PROMETHEUS_LOCAL_PORT', '19090'))
+  JAEGER_LOCAL_PORT   = Integer(ENV.fetch('JAEGER_LOCAL_PORT', '16687'))
+  LOKI_LOCAL_PORT     = Integer(ENV.fetch('LOKI_LOCAL_PORT', '13100'))
 
   KEYCLOAK_URL = "http://127.0.0.1:#{KEYCLOAK_LOCAL_PORT}"
   KONG_URL     = "http://127.0.0.1:#{KONG_LOCAL_PORT}"
+  JAEGER_URL   = "http://127.0.0.1:#{JAEGER_LOCAL_PORT}"
+  LOKI_URL     = "http://127.0.0.1:#{LOKI_LOCAL_PORT}"
   REALM        = 'training-realm'
   ISSUER       = "http://keycloak:8080/realms/#{REALM}"
   CLIENT_ID    = 'training-catalog-client'

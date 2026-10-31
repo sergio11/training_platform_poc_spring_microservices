@@ -51,8 +51,8 @@ spec:
               port: 9000
             initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 60
-            timeoutSeconds: 5
+            failureThreshold: 120
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               path: /health/live

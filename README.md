@@ -57,7 +57,7 @@ Spring Boot remains the enterprise gold standard for distributed Java microservi
 - **Ecosystem Maturity**: Native, battle-tested integration with Spring Data JPA, Spring Security OAuth2 Resource Server, Spring AMQP, and Spring Cloud starters.
 - **Declarative Transactions**: Fine-grained ACID boundaries via `@Transactional` essential for the local Transactional Outbox pattern.
 - **Reactive Client (`WebClient`)**: Allows synchronous inter-service communication with thread-efficient execution and non-blocking timeout controls.
-- **Observability Integration**: Out-of-the-box Micrometer metrics exportable directly to Prometheus, and tracing hooks compatible with OpenTelemetry (OTel).
+- **Observability Integration**: Micrometer metrics for Prometheus plus native OTLP export of traces and logs from Spring Boot 4 to the OpenTelemetry Collector.
 - **Testcontainers Support**: First-class container integration that enables spinning up disposable PostgreSQL, RabbitMQ, and Keycloak instances for realistic automated verification.
 
 ---
@@ -120,7 +120,7 @@ RabbitMQ was selected as the asynchronous messaging broker over Kafka for this s
 |---|---|---|
 | **Internal Architecture** | **Layered (3-Tier) Architecture**: Clean separation (`controller`, `service`, `repository`, `model`), directly leveraging Spring Data JPA entities in services | For high domain complexity, evolve to Hexagonal (Ports & Adapters) with pure domain entities isolated from Jakarta/Hibernate annotations |
 | **Outbox Polling Concurrency** | Scheduled polling query fetches pending outbox events every 5 seconds using pessimistic locking released at query commit | Use `FOR UPDATE SKIP LOCKED` or a distributed coordinator (e.g. ShedLock or Debezium CDC) when running multiple pod replicas |
-| **Outbox Poison Pill Handling** | Events exceeding max retries (`MAX_RETRIES = 5`) remain flagged as `processed = false` | Introduce a dedicated `FAILED` terminal status to prevent failed events from dominating the polling batch |
+| **Outbox Poison Pill Handling** | Events reaching `MAX_RETRIES = 5` stop being polled, but remain flagged as `processed = false` | Introduce a dedicated `FAILED` terminal status and an operational replay endpoint |
 | **Network I/O in Transactions** | `EnrollmentService.enroll()` performs synchronous HTTP calls to verify capacity before persisting the local entity | Fully transition enrollment seat reservations to an asynchronous event saga or decouple HTTP calls from the `@Transactional` boundary |
 | **Notification Provider** | Uses `SimulatedNotificationSender` by default (logs notifications), with an optional Spring profile for JavaMailSender | Connect to real transactional email/SMS gateways (SendGrid, AWS SES, Twilio) with template rendering engines |
 
@@ -344,19 +344,30 @@ All consumers implement idempotent message handling via a dedicated `processed_e
 
 ## 📡 API Reference
 
-All requests pass through Kong Gateway on `http://localhost:8000` with a valid Keycloak Bearer JWT token.
+All external requests pass through Kong Gateway on `http://localhost:8000` with a valid Keycloak Bearer JWT token.
 
-### Endpoint Summary
+Each service publishes its own **OpenAPI 3 contract** at runtime and ships **Swagger UI** for interactive exploration. The contract is generated from the controllers and DTOs, so it cannot drift from the implementation.
 
-| Service | Base path | Main operations | Write access |
-|---|---|---|---|
-| **Training Catalog** | `/api/v1/courses` | List, get, create, update, deactivate, complete, adjust seats | `admin` (create/deactivate); `instructor`, `admin` (update/complete) |
-| **Enrollment** | `/api/v1/enrollments` | List, get, enroll, approve, reject, complete, cancel | `employee`* (own enroll/cancel); `instructor`, `admin` |
-| **Certification** | `/api/v1/certificates` | List, get by ID, get by certificate number | Read-only |
-| **Notification** | `/api/v1/notifications` | List, get | Read-only |
-| **Employee** | `/api/v1/employees` | List, get, find by number, existence check, create, update, deactivate | `admin` |
+| Service | Port | Swagger UI | OpenAPI JSON |
+|---|:---:|---|---|
+| **Training Catalog** | `8081` | `http://localhost:8081/swagger-ui/index.html` | `http://localhost:8081/v3/api-docs` |
+| **Enrollment** | `8082` | `http://localhost:8082/swagger-ui/index.html` | `http://localhost:8082/v3/api-docs` |
+| **Certification** | `8083` | `http://localhost:8083/swagger-ui/index.html` | `http://localhost:8083/v3/api-docs` |
+| **Notification** | `8084` | `http://localhost:8084/swagger-ui/index.html` | `http://localhost:8084/v3/api-docs` |
+| **Employee** | `8085` | `http://localhost:8085/swagger-ui/index.html` | `http://localhost:8085/v3/api-docs` |
 
-> \* **Data ownership:** users with only the `employee` role can access or modify exclusively their own records, matching the Keycloak `employeeId` claim.
+Swagger UI and `/v3/api-docs` are public inside each pod so the contract can be reviewed without a token. The **Authorize** button accepts a Keycloak JWT and applies it to the operations, which remain protected by the service's resource-server security chain.
+
+In Kubernetes, expose the UI with a port-forward and open the service directly (bypassing Kong):
+
+```bash
+kubectl port-forward svc/training-catalog-service 8081:8081 -n training-platform
+# http://localhost:8081/swagger-ui/index.html
+```
+
+The OpenAPI document declares the `bearerAuth` HTTP/JWT security scheme globally, so generated clients and Postman imports get authentication wiring for free.
+
+> **Data ownership:** users with only the `employee` role can access or modify exclusively their own records, matching the Keycloak `employeeId` claim.
 
 ---
 
@@ -408,15 +419,20 @@ rake infra:start
 
 The `infra/k8s` directory provides complete declarative Kubernetes specifications for the `training-platform` namespace:
 - **Deployments & StatefulSets**: Dedicated pods for each microservice with resource requests/limits and persistent storage for PostgreSQL.
-- **Horizontal Pod Autoscaling (HPA)**: HPA manifests for every service (requires a metrics server to scale in-cluster).
+- **Horizontal Pod Autoscaling (HPA)**: HPA manifests for every service; `metrics-server` is installed by `rake k8s:metrics` and validated through `kubectl top` and live CPU utilization. Scale-up uses a 900-second stabilization window so JVM startup bursts on the single-node kind cluster do not create unschedulable replicas.
 - **Health Probes**: Startup, liveness, and readiness probes against Spring Boot Actuator (`/actuator/health/liveness` and `/actuator/health/readiness`).
-- **NetworkPolicies**: Default-deny with explicit service-to-service, Kong, Keycloak, RabbitMQ, PostgreSQL, and Prometheus rules.
+- **NetworkPolicies**: Default-deny with explicit service-to-service, Kong, Keycloak, RabbitMQ, PostgreSQL, Prometheus, and OTel Collector rules.
 - **ConfigMaps & Secrets**: Externalized connection strings, broker topology, realm import, and a deterministic RSA key for Kong JWT validation.
-- **Observability**: Prometheus scraping all five services plus Kong and the OTel collector; Grafana, Jaeger, and Loki deployed alongside.
+- **Observability**: All five services export OTLP traces and logs to the OpenTelemetry Collector; Jaeger stores traces, Loki stores logs labelled by `service_name`, Prometheus scrapes JVM/HTTP metrics, and Grafana provisions all three datasources.
+- **API Contracts**: springdoc generates an OpenAPI 3 document and Swagger UI for every service, with a global `bearerAuth` scheme.
+
+Logs are exported directly from Logback, without sidecars: each service registers `OpenTelemetryAppender` and installs the SDK instance created by Spring Boot 4. Records go over OTLP/HTTP to `http://otel-collector:4318/v1/logs`; the collector's `resource/loki` processor promotes `service.name` to the `service_name` Loki label before pushing to `http://loki:3100/loki/api/v1/push`. Traces use the same path to `http://otel-collector:4318/v1/traces` and are forwarded to Jaeger over OTLP/gRPC.
+
+OTel resource names follow each service's `spring.application.name`: `training-catalog-service`, `enrollment-service`, `certification-service`, `notification-service`, and `employee-service`. Kubernetes deployment names keep the `training-` prefix, so the QA harness maps deployment names to their OTel service names when querying Jaeger and Loki.
 
 ### Kubernetes Validation Evidence
 
-Validated on **2026-10-25** against the kind cluster `poc-qa` (Kubernetes `v1.36.1`, Podman rootful), namespace `training-platform`.
+Validated on **2026-10-31** against the kind cluster `poc-qa` (Kubernetes `v1.36.1`, Podman rootful), namespace `training-platform`.
 
 | Validation | Observed result |
 |---|---|
@@ -424,12 +440,21 @@ Validated on **2026-10-25** against the kind cluster `poc-qa` (Kubernetes `v1.36
 | Container restarts | **0** |
 | CrashLoopBackOff / Error pods | none |
 | Smoke suite (`rake k8s:smoke`) | **PASS** |
-| Full E2E flow (`rake k8s:test`) | **PASS** (`course=2`, `employee=4`) |
+| Full E2E flow (`rake k8s:test`) | **PASS** (`course=3`, `employee=2`) |
 | Kong entry point | `401` without JWT, `200` with JWT |
-| Certificate issued | `CERT-20261025-000001` |
-| Notifications | `EMPLOYEE_CREATED`, `ENROLLMENT_CREATED`, `ENROLLMENT_APPROVED`, `COURSE_COMPLETED`, `CERTIFICATE_GENERATED` all `DELIVERED` |
+| Certificate issued | `CERT-20261031-000002` |
+| Notifications | `ENROLLMENT_CREATED`, `ENROLLMENT_APPROVED`, `COURSE_COMPLETED`, `CERTIFICATE_GENERATED` all `DELIVERED` |
 | Outbox and RabbitMQ | fully processed, `0` dead-letter messages |
 | Prometheus targets | all `UP` |
+| Horizontal Pod Autoscalers | 5 HPAs with live CPU metrics (`4%`–`46%` of a `70%` target), 1 replica each |
+| Jaeger | traces received from all five services, including `enrollment-service` |
+| Loki | logs received from all five services, including `enrollment-service` |
+
+![Swagger UI generated from the catalog-service OpenAPI document](docs/evidence/swagger-ui.png)
+
+![Jaeger trace detail for an enrollment request](docs/evidence/jaeger-trace.png)
+
+![Grafana Explore showing Loki logs for enrollment-service](docs/evidence/loki-logs.png)
 
 ![Grafana dashboard showing JVM and HTTP metrics from the Kubernetes deployment](docs/evidence/grafana-dashboard.png)
 
@@ -438,20 +463,34 @@ Validated on **2026-10-25** against the kind cluster `poc-qa` (Kubernetes `v1.36
 
 ```text
 NAME                                              READY   STATUS    RESTARTS   AGE
-postgresql-0                                      1/1     Running   0          40m
-training-catalog-service-7d4cf44469-lhc7m         1/1     Running   0          36m
-training-certification-service-6f67b4777d-fp7kq   1/1     Running   0          36m
-training-employee-service-c9fbcd85d-24c45         1/1     Running   0          36m
-training-enrollment-service-677f55f5c6-5hps6      1/1     Running   0          36m
-training-grafana-5cc4cf646c-kh44x                 1/1     Running   0          24m
-training-jaeger-599dbd59f8-rlb9g                  1/1     Running   0          36m
-training-keycloak-7c4f9c596f-xw9nd                1/1     Running   0          40m
-training-kong-6fdf5466fb-j5l2v                    1/1     Running   0          24m
-training-loki-7dcf67448f-dsx4p                    1/1     Running   0          36m
-training-notification-service-c7ddbcc85-2l4qv     1/1     Running   0          36m
-training-otel-collector-6c94cddbdd-ld2lp          1/1     Running   0          24m
-training-prometheus-7694b9cd7f-cvg8w              1/1     Running   0          36m
-training-rabbitmq-7478966df-7r42x                 1/1     Running   0          40m
+postgresql-0                                      1/1     Running   0          38m
+training-catalog-service-6c48fd66c6-96g7c         1/1     Running   0          34m
+training-certification-service-5bfd4d5bf9-62wrd   1/1     Running   0          29m
+training-employee-service-57b4fcc6c5-9g24f        1/1     Running   0          25m
+training-enrollment-service-fc88b7ff5-n26fn       1/1     Running   0          32m
+training-grafana-68f67d7644-jgxbh                 1/1     Running   0          36m
+training-jaeger-67568dd94-xrbmg                   1/1     Running   0          36m
+training-keycloak-679c7bd954-dpgl7                1/1     Running   0          38m
+training-kong-b77fc4f7f-4tzwx                     1/1     Running   0          35m
+training-loki-78fd47d8dc-lpsqw                    1/1     Running   0          36m
+training-notification-service-5d9b7b458-d25fb     1/1     Running   0          27m
+training-otel-collector-598894cf88-d89fp          1/1     Running   0          36m
+training-prometheus-6cdb5df79-wj64g               1/1     Running   0          36m
+training-rabbitmq-5899dd7869-v8lrx                1/1     Running   0          38m
+```
+
+</details>
+
+<details>
+<summary>Captured <code>kubectl get hpa -n training-platform</code> output</summary>
+
+```text
+NAME                                 REFERENCE                                   TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+training-catalog-service-hpa         Deployment/training-catalog-service         cpu: 46%/70%   1         10        1          19m
+training-certification-service-hpa   Deployment/training-certification-service   cpu: 6%/70%    1         10        1          19m
+training-employee-service-hpa        Deployment/training-employee-service        cpu: 37%/70%   1         10        1          19m
+training-enrollment-service-hpa      Deployment/training-enrollment-service      cpu: 4%/70%    1         10        1          19m
+training-notification-service-hpa    Deployment/training-notification-service   cpu: 7%/70%    1         10        1          19m
 ```
 
 </details>
@@ -488,7 +527,7 @@ Unit tests form the broad base; integration tests exercise persistence and messa
 
 ### Test Coverage & Quality Gates
 
-Enforced in `build.gradle.kts` via `JacocoCoverageVerification` requiring **100% instruction and branch coverage**:
+Enforced in `build.gradle.kts` via `JacocoCoverageVerification` requiring **100% instruction, branch, line, and method coverage**. The `check` task depends on the verification task, so a regression fails the build:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -523,17 +562,18 @@ rake infra:start
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-### Step 2: Run All Tests & Verify 100% Coverage
+### Step 2: Run Unit + Integration Tests and the Coverage Gate
 ```bash
-rake test:run
-# or via Gradle:
-./gradlew test jacocoTestReport jacocoTestCoverageVerification
+# Fast feedback: skips the slow E2E module
+./gradlew test -x :e2e-tests:test jacocoTestReport jacocoTestCoverageVerification
 ```
+`test` is a lifecycle task, so by default it also runs `:e2e-tests:test`. The `-x` above keeps this step focused on unit and integration layers; `rake test:run` deliberately runs everything.
 
 ### Step 3: Run Full End-to-End Suite
 ```bash
 ./gradlew e2eTest
 ```
+`e2eTest` is an alias for `:e2e-tests:test`; it starts PostgreSQL, RabbitMQ, Keycloak, and all five services with Testcontainers. The current suite runs **64 tests across 8 classes** (course management, enrollment flow, async events, outbox, resilience, security, and edge cases) with 0 failures in ~15 minutes on the reference machine.
 
 ### Step 4: Deploy to Local Kubernetes (kind + Podman)
 
@@ -557,6 +597,10 @@ Local endpoints:
 - **Kong admin:** http://localhost:8001 (NodePort `30081`)
 - **Keycloak:** `kubectl port-forward svc/keycloak 18080:8080 -n training-platform`
 - **Prometheus:** `kubectl port-forward svc/prometheus 19090:9090 -n training-platform`
+- **Grafana:** `kubectl port-forward svc/grafana 13000:3000 -n training-platform` (`admin` / `admin`)
+- **Jaeger:** `kubectl port-forward svc/jaeger 16686:16686 -n training-platform`
+- **Loki API:** `kubectl port-forward svc/loki 13100:3100 -n training-platform`
+- **Swagger UI:** `kubectl port-forward svc/training-catalog-service 8081:8081 -n training-platform`
 
 ### Pre-configured Test Users
 
@@ -582,8 +626,11 @@ poc_architecture/
 ├── e2e-tests/                      # Full stack Testcontainers end-to-end test suite
 ├── test-support/                   # Test fixtures, mock servers, and testing helpers
 ├── infra/
-│   ├── docker/                     # Docker Compose stack (Postgres, RabbitMQ, Keycloak, Kong, OTel)
-│   └── k8s/                        # Kubernetes Deployments, Services, ConfigMaps, and HPA
+│   ├── docker-compose.yml          # Local stack (Postgres, RabbitMQ, Keycloak, Kong, OTel, Jaeger, Loki)
+│   ├── k8s/                        # Kubernetes manifests (services, HPA, metrics-server, observability)
+│   ├── kind/                       # kind cluster configuration for local QA
+│   ├── keycloak/ kong/ otel/ ...   # Component configuration for Compose
+│   └── prometheus/ grafana/        # Local observability provisioning
 ├── build.gradle.kts                # Multi-project Gradle build configuration & JaCoCo gates
 ├── Rakefile                        # Automation tasks (infra:start, test:run, k8s:deploy)
 └── README.md                       # Architectural documentation

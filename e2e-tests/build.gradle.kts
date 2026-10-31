@@ -38,3 +38,12 @@ tasks.test {
     maxParallelForks = 1
     forkEvery = 100
 }
+
+// This module contains no production classes, so a coverage gate is meaningless.
+tasks.withType<JacocoReport> {
+    enabled = false
+}
+
+tasks.withType<JacocoCoverageVerification> {
+    enabled = false
+}

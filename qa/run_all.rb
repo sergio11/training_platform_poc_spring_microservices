@@ -223,6 +223,37 @@ rescue QA::Failure => e
   puts "  [FAIL] RabbitMQ drain - #{e.message}"
 end
 
+section 'Distributed tracing and logs'
+QA.port_forward('svc/jaeger', QA::JAEGER_LOCAL_PORT, 16686)
+QA.port_forward('svc/loki', QA::LOKI_LOCAL_PORT, 3100)
+
+# Deployment name in Kubernetes -> spring.application.name exported over OTLP.
+{ 'training-catalog-service' => 'training-catalog-service',
+  'training-enrollment-service' => 'enrollment-service' }.each do |deployment, service|
+  begin
+    found = QA.wait_until(timeout: 60, interval: 2, label: "Jaeger traces for #{service}") do
+      code, body = QA.http_json(:get, "#{QA::JAEGER_URL}/api/traces?service=#{service}&limit=1")
+      code == 200 && body.is_a?(Hash) && body.fetch('data', []).any?
+    end
+    failures += 1 unless QA.check("Jaeger trace present for #{deployment} (svc #{service})", found)
+  rescue QA::Failure => e
+    failures += 1
+    puts "  [FAIL] Jaeger trace present for #{deployment} (svc #{service}) - #{e.message}"
+  end
+
+  begin
+    found = QA.wait_until(timeout: 60, interval: 2, label: "Loki logs for #{service}") do
+      query = URI.encode_www_form_component(%({service_name="#{service}"}))
+      code, body = QA.http_json(:get, "#{QA::LOKI_URL}/loki/api/v1/query_range?query=#{query}&limit=5")
+      code == 200 && body.is_a?(Hash) && body.dig('data', 'result').to_a.any?
+    end
+    failures += 1 unless QA.check("Loki logs present for #{deployment} (svc #{service})", found)
+  rescue QA::Failure => e
+    failures += 1
+    puts "  [FAIL] Loki logs present for #{deployment} (svc #{service}) - #{e.message}"
+  end
+end
+
 section 'Stability after flow'
 pods = QA.kubectl_json('get', 'pods', '--namespace', QA::NAMESPACE, '-o', 'json')
 restarts = pods.fetch('items', []).sum do |pod|

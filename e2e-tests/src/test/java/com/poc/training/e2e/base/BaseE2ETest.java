@@ -299,6 +299,10 @@ public abstract class BaseE2ETest {
             allProps.put("spring.main.banner-mode", "off");
             allProps.put("spring.main.allow-bean-definition-overriding", "true");
             allProps.put("spring.lifecycle.timeout-per-shutdown-phase", "10s");
+            // The E2E suite runs without an OTLP collector; do not let exporters
+            // retry in the background and pollute the test logs.
+            allProps.put("management.logging.export.otlp.enabled", "false");
+            allProps.put("management.tracing.export.otlp.enabled", "false");
             allProps.putAll(props);
 
             ConfigurableEnvironment env = new StandardEnvironment();

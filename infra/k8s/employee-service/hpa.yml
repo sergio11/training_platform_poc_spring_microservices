@@ -17,3 +17,10 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  # JVM startup burns CPU for ~2 minutes; without a stabilization window the
+  # autoscaler adds replicas that cannot fit on the single-node kind cluster.
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 900
+    scaleDown:
+      stabilizationWindowSeconds: 300

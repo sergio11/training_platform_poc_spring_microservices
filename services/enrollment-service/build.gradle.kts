@@ -17,6 +17,8 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("io.micrometer:micrometer-tracing-bridge-otel")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+    implementation("org.springframework.boot:spring-boot-opentelemetry")
+    implementation("org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
     
     implementation("org.springframework.boot:spring-boot-starter-flyway")
