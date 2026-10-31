@@ -623,7 +623,9 @@ Local endpoints:
 ## 📁 Project Structure
 
 ```
-poc_architecture/
+training-platform/
+├── qa/                             # QA smoke and E2E test runners
+├── docs/                           # Architecture documentation and evidence
 ├── services/
 │   ├── training-catalog-service/   # Course catalog, capacity & seat management (:8081)
 │   ├── enrollment-service/         # Enrollment orchestration & lifecycle (:8082)

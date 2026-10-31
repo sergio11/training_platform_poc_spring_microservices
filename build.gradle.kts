@@ -49,7 +49,7 @@ subprojects {
         systemProperty("testcontainers.ryuk.disabled", "true")
         systemProperty("ryuk.disabled", "true")
         environment("TESTCONTAINERS_RYUK_DISABLED", "true")
-        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/docker_engine")
+        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: (if (System.getProperty("os.name").toLowerCase().contains("windows")) "npipe:////./pipe/docker_engine" else null))
     }
 
     tasks.withType<JacocoReport> {
@@ -122,7 +122,7 @@ subprojects {
         systemProperty("testcontainers.ryuk.disabled", "true")
         systemProperty("ryuk.disabled", "true")
         environment("TESTCONTAINERS_RYUK_DISABLED", "true")
-        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: "npipe:////./pipe/docker_engine")
+        environment("DOCKER_HOST", System.getenv("DOCKER_HOST") ?: (if (System.getProperty("os.name").toLowerCase().contains("windows")) "npipe:////./pipe/docker_engine" else null))
     }
 
     // Unit test task (excluding integration tests)

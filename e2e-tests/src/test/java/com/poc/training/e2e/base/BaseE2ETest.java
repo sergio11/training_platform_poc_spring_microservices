@@ -39,7 +39,7 @@ public abstract class BaseE2ETest {
     static {
         System.setProperty("testcontainers.ryuk.disabled", "true");
         System.setProperty("ryuk.disabled", "true");
-        if (System.getenv("DOCKER_HOST") == null) {
+        if (System.getenv("DOCKER_HOST") == null && System.getProperty("os.name").toLowerCase().contains("windows")) {
             System.setProperty("docker.host", "npipe:////./pipe/docker_engine");
         }
     }

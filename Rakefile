@@ -1,10 +1,10 @@
 # Rakefile for Corporate Training Platform POC
 
 CONTAINER_ENGINE = ENV['CONTAINER_ENGINE'] || 'podman'
-PODMAN_DOCKER_HOST = "npipe:////./pipe/docker_engine"
+PODMAN_DOCKER_HOST = Gem.win_platform? ? "npipe:////./pipe/docker_engine" : nil
 
 def setup_podman_env
-  ENV['DOCKER_HOST'] ||= PODMAN_DOCKER_HOST
+  ENV['DOCKER_HOST'] ||= PODMAN_DOCKER_HOST if PODMAN_DOCKER_HOST
   ENV['TESTCONTAINERS_RYUK_DISABLED'] = 'true'
 end
 
