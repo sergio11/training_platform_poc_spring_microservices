@@ -378,7 +378,7 @@ flowchart LR
     User(["User Request"]) --> Kong["Kong Gateway<br/>JWT Plugin"]
     Kong -->|"Validated JWT"| Svc["Spring Boot Microservice"]
     Svc --> Filter["KeycloakJwtConverter<br/>Extracts realm_access.roles"]
-    Filter --> AuthZ["@PreAuthorize Check"]
+    Filter --> AuthZ["Method Security Check"]
     AuthZ --> DataCheck["Data Ownership Check<br/>JwtUtils.extractEmployeeId"]
 
     style Kong fill:#1a1a2e,color:#fff
