@@ -12,7 +12,7 @@
 [![JaCoCo 100%](https://img.shields.io/badge/JaCoCo-100%25-brightgreen?style=for-the-badge)](#-test-coverage--quality-gates)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-A production-grade Proof-of-Concept demonstrating an **Event-Driven Microservices Architecture** for enterprise training management. Built with Spring Boot 4, Database-per-Service, Transactional Outbox, Kong Gateway, Keycloak OAuth2/OIDC, Resilience4j, and a Prometheus/Grafana observability stack — validated by a full end-to-end test suite and 100% test coverage.
+A **Proof-of-Concept (POC)** demonstrating an **Event-Driven Microservices Architecture** for enterprise training management. Built with Spring Boot 4, Database-per-Service, Transactional Outbox, Kong Gateway, Keycloak OAuth2/OIDC, Resilience4j, and a Prometheus/Grafana observability stack — validated by a full end-to-end test suite and 100% test coverage. It is intended for architectural evaluation and learning, **not as a production deployment**.
 
 ---
 
