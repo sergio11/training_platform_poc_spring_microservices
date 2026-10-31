@@ -531,7 +531,7 @@ flowchart BT
     style E2E fill:#6DB33F,color:#fff
 ```
 
-Unit tests form the broad base; integration tests exercise persistence and messaging with real containers; the E2E layer validates the complete business flow through Kong.
+Unit tests form the broad base; integration tests exercise persistence and messaging with real containers; the Gradle E2E layer validates the complete business flow against the five services directly, while `rake k8s:smoke` and `rake k8s:test` exercise the same flow **through Kong** in the kind cluster.
 
 ### Test Coverage & Quality Gates
 

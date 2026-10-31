@@ -19,11 +19,25 @@ plugins:
       credentials: true
 
 consumers:
-  - username: training-catalog-client
-  - username: training-enrollment-client
-  - username: training-certification-client
-  - username: training-notification-client
-  - username: training-employee-client
+  # The JWT plugin looks up the credential by the token's `iss` claim, so the
+  # credential key is the Keycloak issuer. Kong requires credential keys to be
+  # unique, hence a single consumer instead of one per Keycloak client.
+  # Compose runs Keycloak on localhost:8080 without KC_HOSTNAME, so tokens
+  # issued in local development carry that issuer.
+  - username: training-platform
+    jwt_secrets:
+      - key: http://localhost:8080/realms/training-realm
+        algorithm: RS256
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwwAVkyDCKN9VqZaZ9MoO
+          TsxWAoE47q9s4p1Q5OAD2kR99NQg+mpXVTa7I3dXMW1VO0Q8joIDn2xH1FvXi0pc
+          +D6OxLe66S0g9HaNnH8w9c/zElUkBEtSbKXF9EdQjaqvE67odquK4+euyjnRh7Ri
+          bootnpSszLHzzWWOziIW65KdGv2Up82CgN1rTH+XVs3Hy1HmKOPgGUFAeuXu/i6e
+          elccdr/jV3LwI+yOgo96HDDzB1Nh8h6YqMU0IyPbTW5JOJcxuxRi8GEPdaiZk1sw
+          T8oiT2MORukZpg5FVaggvxAxprh6K1JHLeHp7LjEy2h6moGfAa8nfJflwGwLxhJq
+          ZQIDAQAB
+          -----END PUBLIC KEY-----
 
 services:
   - name: training-catalog-service
