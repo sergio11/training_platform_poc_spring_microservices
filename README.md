@@ -14,6 +14,8 @@
 
 A **Proof-of-Concept (POC)** demonstrating an **Event-Driven Microservices Architecture** for enterprise training management. Built with Spring Boot 4, Database-per-Service, Transactional Outbox, Kong Gateway, Keycloak OAuth2/OIDC, Resilience4j, and a Prometheus/Grafana observability stack — validated by a full end-to-end test suite and 100% test coverage. It is intended for architectural evaluation and learning, **not as a production deployment**.
 
+> **In one paragraph:** Five Spring Boot 4 microservices, each owning its own PostgreSQL database and Flyway migrations. Kong is the only entry point and validates the RS256 JWT issued by Keycloak; every service re-validates the token and enforces RBAC and data ownership through the `employeeId` claim injected by Keycloak. Business communication is event-driven over a RabbitMQ topic exchange, with a Transactional Outbox so events cannot be lost and idempotent consumers so duplicates are harmless. Synchronous calls from enrollment to catalog and employee are protected by Resilience4j. Everything is instrumented with metrics, traces and logs, and validated by 64 E2E tests, 100% coverage and a real kind deployment with 14 pods, HPA and NetworkPolicies. It is a POC: the remaining production decisions are documented as trade-offs.
+
 ---
 
 [📋 Disclaimer](#-disclaimer) · [🚀 Why This Stack?](#-why-this-stack) · [💪 Strengths & Trade-offs](#-strengths-and-trade-offs) · [🏗️ Architecture](#%EF%B8%8F-architecture) · [✨ Microservices Breakdown](#-microservices-breakdown) · [🔄 Business Events & Flow](#-business-events--choreography) · [🛡️ Core Reliability Patterns](#%EF%B8%8F-core-reliability-patterns) · [📡 API Reference](#-api-reference) · [🔒 Security & RBAC](#-security--rbac) · [☸️ Infrastructure & Kubernetes](#%EF%B8%8F-infrastructure--deployment) · [🧪 Testing & Quality](#-testing--quality) · [🏁 Quick Start](#-quick-start) · [📁 Project Structure](#-project-structure)
@@ -70,6 +72,8 @@ RabbitMQ was selected as the asynchronous messaging broker over Kafka for this s
 - **Lightweight Broker Model**: Operates with low memory footprint and instantaneous startup in CI/CD and local development compared to multi-node Kafka clusters.
 - **Dead Letter Exchanges (DLX)**: Native routing of unprocessable messages to dead-letter queues (`catalog.dlq`, `certification.dlq`, `notification.dlq`) with automated retry headers.
 - **At-Least-Once Delivery**: Works in tandem with local outbox tables and idempotent consumer tables (`processed_events`).
+
+> **Why RabbitMQ and not Kafka?** This domain is made of transactional workflows with moderate volume. RabbitMQ provides topic routing, native dead-letter queues and a lightweight startup; Kafka would be overkill and would add partition and offset management complexity.
 
 ---
 
@@ -170,6 +174,8 @@ flowchart LR
     style Notification fill:#6DB33F,color:#fff
     style Employee fill:#6DB33F,color:#fff
 ```
+
+> **Design rule:** each service is the exclusive owner of its schema. No service reads another service's database; when it needs data it either calls the owning service over REST (synchronous) or waits for an event (asynchronous).
 
 ### Microservice Internal Architecture
 
@@ -386,8 +392,10 @@ flowchart LR
     style DataCheck fill:#2b6cb0,color:#fff
 ```
 
+> **Kong and Keycloak complement each other, they do not overlap:** Kong rejects garbage at the edge (signature and expiry); the service re-validates the token and then decides *what* that user may do and *on which data*.
+
 - **Authentication**: Keycloak issues RSA-signed OIDC JSON Web Tokens (JWT).
-- **Token Relay**: When `EnrollmentService` makes outbound HTTP requests to downstream services, the incoming `Authorization` Bearer token is automatically propagated via a custom Netty `WebClient` exchange filter (`tokenRelayFilter`).
+- **Token Relay**: When `EnrollmentService` makes outbound HTTP requests to downstream services, the incoming `Authorization` Bearer token is automatically propagated via a custom Netty `WebClient` exchange filter (`tokenRelayFilter`). The user's token travels with the request across the whole chain; there is no token to relay from non-HTTP threads such as AMQP listeners.
 - **Role Hierarchy**:
   - `admin`: Unrestricted administrative access across all endpoints.
   - `instructor`: Manage course catalog, review enrollments, grade completions.
